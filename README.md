@@ -47,7 +47,7 @@ Registers:
     
 ```
 Instructions:
-  Group 0 - 2-Register ALU operation:
+  Group 0 - Register to register ALU operation:
    Arithmetic & Logic: 
      (0x00XY) - mov rX, rY  :  rX = rY
      (0x01XY) - and rX, rY  :  rX = rX & rY
