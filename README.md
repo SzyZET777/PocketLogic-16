@@ -67,7 +67,7 @@ Instructions:
      (0x0EXY) - lte rX, rY  :  rX = (signed) (rX <= rY)
      (0x0FXY) - gte rX, rY  :  rX = (signed) (rX ?= rY)
   
-  Group 1 - Register and 4-bit Immediate ALU operations:
+  Group 1 - Register and 4-bit immediate ALU operations:
    Arithmetic & Logic:
      (0x10XI) - mov rX, I  :  rX = I
      (0x11XI) - and rX, I  :  rX = rX & I
@@ -89,8 +89,8 @@ Instructions:
     (0x22XY) - stb rX, [rY]  :  memory[rY] = rX
     (0x23XY) - stw rX, [rY]  :  memory[rY] = rX
   
-  Group 3 - Jumps and full immediates:
-   Full immediate operations:
+  Group 3 - Jumps and 16-bit immediate operation:
+   16-bit immediate operations:
     (0x30X0'0xIIII) - ldi rX, IIII  :  rX = IIII
     (0x31X0'0xIIII) - adi rX, IIII  :  rX = rX + IIII
     (0x32X0'0xIIII) - eqi rX, IIII  :  rX = (rX == IIII)
