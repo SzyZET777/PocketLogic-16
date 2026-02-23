@@ -1,3 +1,12 @@
+; Start main:
+jmp main
+
+
+; Global Variables
+caps_lock_on: 
+  byte 0
+
+
 ; func main () {
 main:
   ldi sp, 0xC000
@@ -51,14 +60,50 @@ wait_for_key_release:
   ldw t1, [t0]
   brc t1, wait_for_key_release
 
+; Check if caps lock was pressed
+  mov t0, s1
+  dif t0, 2
+  brc t0, caps_lock_not_pressed
+  ldi t0, caps_lock_on
+  ldb t1, [t0]
+  xor t1, 1
+  stb t1, [t0]
+  jmp skip
+
+caps_lock_not_pressed:
+
+; Check if backspace was pressed
+  mov t0, s1
+  dif t0, 3
+  brc t0, backspace_not_pressed
+  ldi t0, text_buffer
+  add t0, s0
+  mov t1, 0
+  stb t1, [t0]
+  sub s0, 1
+  ldi t0, 0x3F
+  and s0, t0
+  jmp skip:
+
+backspace_not_pressed:
+
+; Check if 300ms passed
   ldi t0, 0xF004
   ldw t1, [t0]
 
+; Draw text character
   ldi t0, text_buffer
   add t0, s0
+; Check for alt characters
   equ t1, 0
   shl t1, 5
   add s1, t1
+; Check for caps lock
+  ldi t2, caps_lock_on
+  ldb t2, [t2]
+  shl t2, 6
+  add s1, t2
+; Store the character in a text buffer
   stb s1, [t0]
 
 ; Set new character color to black (0x00):
@@ -278,7 +323,647 @@ char_table:
   byte 0b00111000
   byte 0b00000000
 
-; delete:
+; backspace:
+  byte 0b00000000
+  byte 0b00011110
+  byte 0b00100010
+  byte 0b01010110
+  byte 0b01001010
+  byte 0b00100010
+  byte 0b00011110
+  byte 0b00000000
+
+; line cursor:
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b01111100
+
+; space:
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+
+; Q letter:
+  byte 0b00000000
+  byte 0b00111000
+  byte 0b01000100
+  byte 0b01000100
+  byte 0b01000100
+  byte 0b01000100
+  byte 0b00111000
+  byte 0b00000110
+
+; W letter:
+  byte 0b00000000
+  byte 0b01000100
+  byte 0b01000100
+  byte 0b01010100
+  byte 0b01010100
+  byte 0b01101100
+  byte 0b01000100
+  byte 0b00000000
+
+; E letter:
+  byte 0b00000000
+  byte 0b01111100
+  byte 0b01000000
+  byte 0b01111000
+  byte 0b01000000
+  byte 0b01000000
+  byte 0b01111100
+  byte 0b00000000
+
+; R letter:
+  byte 0b00000000
+  byte 0b01111000
+  byte 0b01000100
+  byte 0b01000100
+  byte 0b01111000
+  byte 0b01000100
+  byte 0b01000100
+  byte 0b00000000
+
+; T letter:
+  byte 0b00000000
+  byte 0b01111100
+  byte 0b00010000
+  byte 0b00010000
+  byte 0b00010000
+  byte 0b00010000
+  byte 0b00010000
+  byte 0b00000000
+
+; Y letter:
+  byte 0b00000000
+  byte 0b01000100
+  byte 0b00101000
+  byte 0b00010000
+  byte 0b00010000
+  byte 0b00010000
+  byte 0b00010000
+  byte 0b00000000
+
+; U letter:
+  byte 0b00000000
+  byte 0b01000100
+  byte 0b01000100
+  byte 0b01000100
+  byte 0b01000100
+  byte 0b01000100
+  byte 0b00111010
+  byte 0b00000000
+
+; I letter:
+  byte 0b00000000
+  byte 0b01111100
+  byte 0b00010000
+  byte 0b00010000
+  byte 0b00010000
+  byte 0b00010000
+  byte 0b01111100
+  byte 0b00000000
+
+; O letter:
+  byte 0b00000000
+  byte 0b00111000
+  byte 0b01000100
+  byte 0b01000100
+  byte 0b01000100
+  byte 0b01000100
+  byte 0b00111000
+  byte 0b00000000
+
+; P letter:
+  byte 0b00000000
+  byte 0b01111000
+  byte 0b01000100
+  byte 0b01000100
+  byte 0b01111000
+  byte 0b01000000
+  byte 0b01000000
+  byte 0b00000000
+
+; A letter:
+  byte 0b00000000
+  byte 0b00111000
+  byte 0b01000100
+  byte 0b01000100
+  byte 0b01111100
+  byte 0b01000100
+  byte 0b01000100
+  byte 0b00000000
+
+  ; S letter:
+  byte 0b00000000
+  byte 0b00111100
+  byte 0b01000000
+  byte 0b00111000
+  byte 0b00000100
+  byte 0b01000100
+  byte 0b00111000
+  byte 0b00000000
+
+; D letter:
+  byte 0b00000000
+  byte 0b01111100
+  byte 0b01000010
+  byte 0b01000010
+  byte 0b01000010
+  byte 0b01000010
+  byte 0b01111100
+  byte 0b00000000
+
+; F letter:
+  byte 0b00000000
+  byte 0b01111100
+  byte 0b01000000
+  byte 0b01111000
+  byte 0b01000000
+  byte 0b01000000
+  byte 0b01000000
+  byte 0b00000000
+
+  ; G letter:
+  byte 0b00000000
+  byte 0b00111000
+  byte 0b01000100
+  byte 0b01000000
+  byte 0b01001100
+  byte 0b01000100
+  byte 0b00111000
+  byte 0b00000000
+
+; H letter:
+  byte 0b00000000
+  byte 0b01000100
+  byte 0b01000100
+  byte 0b01111100
+  byte 0b01000100
+  byte 0b01000100
+  byte 0b01000100
+  byte 0b00000000
+
+; J letter:
+  byte 0b00000000
+  byte 0b01111100
+  byte 0b00000100
+  byte 0b00000100
+  byte 0b00000100
+  byte 0b01000100
+  byte 0b00111000
+  byte 0b00000000
+
+; K letter:
+  byte 0b00000000
+  byte 0b01000100
+  byte 0b01001000
+  byte 0b01110000
+  byte 0b0100100
+  byte 0b01000100
+  byte 0b01000100
+  byte 0b00000000
+  
+; L letter:
+  byte 0b00000000
+  byte 0b01000000
+  byte 0b01000000
+  byte 0b01000000
+  byte 0b01000000
+  byte 0b01000000
+  byte 0b01111100
+  byte 0b00000000
+
+; Z letter:
+  byte 0b00000000
+  byte 0b01111100
+  byte 0b00001000
+  byte 0b00010000
+  byte 0b00010000
+  byte 0b00100000
+  byte 0b01111100
+  byte 0b00000000
+
+; X letter:
+  byte 0b00000000
+  byte 0b01000100
+  byte 0b00101000
+  byte 0b00010000
+  byte 0b00010000
+  byte 0b00101000
+  byte 0b01000100
+  byte 0b00000000
+
+; C letter:
+  byte 0b00000000
+  byte 0b00111000
+  byte 0b01000100
+  byte 0b01000000
+  byte 0b01000000
+  byte 0b01000100
+  byte 0b00111000
+  byte 0b00000000
+
+; V letter:
+  byte 0b00000000
+  byte 0b01000100
+  byte 0b01000100
+  byte 0b00101000
+  byte 0b00101000
+  byte 0b00010000
+  byte 0b00010000
+  byte 0b00000000
+
+; B letter:
+  byte 0b00000000
+  byte 0b01111000
+  byte 0b01000100
+  byte 0b01111000
+  byte 0b01000100
+  byte 0b01000100
+  byte 0b01111000
+  byte 0b00000000
+
+; N letter:
+  byte 0b00000000
+  byte 0b01000100
+  byte 0b01100100
+  byte 0b01010100
+  byte 0b01010100
+  byte 0b01001100
+  byte 0b01000100
+  byte 0b00000000
+
+; M letter:
+  byte 0b00000000
+  byte 0b01000100
+  byte 0b01101100
+  byte 0b01010100
+  byte 0b01010100
+  byte 0b01000100
+  byte 0b01000100
+  byte 0b00000000
+
+; arrow up:
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+
+; arrow down:
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+
+; arrow left:
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+
+; arrow right:
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+
+; block cursor:
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+
+; _ character:
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b01111100
+  byte 0b00000000
+
+; number 1:
+  byte 0b00000000
+  byte 0b00010000
+  byte 0b00110000
+  byte 0b00010000
+  byte 0b00010000
+  byte 0b00010000
+  byte 0b00111000
+  byte 0b00000000
+
+; number 2:
+  byte 0b00000000
+  byte 0b00011000
+  byte 0b00100100
+  byte 0b00000100
+  byte 0b00011000
+  byte 0b00100000
+  byte 0b00111100
+  byte 0b00000000
+
+; number 3:
+  byte 0b00000000
+  byte 0b00011000
+  byte 0b00100100
+  byte 0b00001000
+  byte 0b00000100
+  byte 0b00100100
+  byte 0b00011000
+  byte 0b00000000
+
+; number 4:
+  byte 0b00000000
+  byte 0b00001000
+  byte 0b00010000
+  byte 0b00100000
+  byte 0b00101000
+  byte 0b00111100
+  byte 0b00001000
+  byte 0b00000000
+
+; number 5:
+  byte 0b00000000
+  byte 0b00111100
+  byte 0b00100000
+  byte 0b00011000
+  byte 0b00000100
+  byte 0b00100100
+  byte 0b00011000
+  byte 0b00000000
+
+; number 6:
+  byte 0b00000000
+  byte 0b00011100
+  byte 0b00100000
+  byte 0b00111000
+  byte 0b00100100
+  byte 0b00100100
+  byte 0b00011000
+  byte 0b00000000
+
+; number 7:
+  byte 0b00000000
+  byte 0b00111100
+  byte 0b00000100
+  byte 0b00001000
+  byte 0b00010000
+  byte 0b00010000
+  byte 0b00010000
+  byte 0b00000000
+
+; number 8:
+  byte 0b00000000
+  byte 0b00011000
+  byte 0b00100100
+  byte 0b00011000
+  byte 0b00100100
+  byte 0b00100100
+  byte 0b00011000
+  byte 0b00000000
+
+; number 9:
+  byte 0b00000000
+  byte 0b00011000
+  byte 0b00100100
+  byte 0b00100100
+  byte 0b00011100
+  byte 0b00000100
+  byte 0b00111000
+  byte 0b00000000
+
+; number 0:
+  byte 0b00000000
+  byte 0b00011000
+  byte 0b00100100
+  byte 0b00101100
+  byte 0b00110100
+  byte 0b00100100
+  byte 0b00011000
+  byte 0b00000000
+
+; < character:
+  byte 0b00000000
+  byte 0b00001000
+  byte 0b00010000
+  byte 0b00100000
+  byte 0b00010000
+  byte 0b00001000
+  byte 0b00000000
+  byte 0b00000000
+
+; > character:
+  byte 0b00000000
+  byte 0b00100000
+  byte 0b00010000
+  byte 0b00001000
+  byte 0b00010000
+  byte 0b00100000
+  byte 0b00000000
+  byte 0b00000000
+
+; = character:
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b01111100
+  byte 0b00000000
+  byte 0b01111100
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+
+; + character:
+  byte 0b00000000
+  byte 0b00010000
+  byte 0b00010000
+  byte 0b01111100
+  byte 0b00010000
+  byte 0b00010000
+  byte 0b00000000
+  byte 0b00000000
+
+; - character:
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b01111100
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+
+; * character:
+  byte 0b00000000
+  byte 0b00010000
+  byte 0b01010100
+  byte 0b00111000
+  byte 0b01010100
+  byte 0b00010000
+  byte 0b00000000
+  byte 0b00000000
+
+; / character:
+  byte 0b00000000
+  byte 0b00000010
+  byte 0b00000100
+  byte 0b00001000
+  byte 0b00010000
+  byte 0b00100000
+  byte 0b01000000
+  byte 0b00000000
+
+; ( character:
+  byte 0b00000000
+  byte 0b00011000
+  byte 0b00100000
+  byte 0b00100000
+  byte 0b00100000
+  byte 0b00100000
+  byte 0b00011000
+  byte 0b00000000
+
+; ) character:
+  byte 0b00000000
+  byte 0b00110000
+  byte 0b00001000
+  byte 0b00001000
+  byte 0b00001000
+  byte 0b00001000
+  byte 0b00110000
+  byte 0b00000000
+
+; ! character:
+  byte 0b00000000
+  byte 0b00010000
+  byte 0b00010000
+  byte 0b00010000
+  byte 0b00010000
+  byte 0b00000000
+  byte 0b00010000
+  byte 0b00000000
+
+; ? character:
+  byte 0b00000000
+  byte 0b00011000
+  byte 0b00100100
+  byte 0b00001000
+  byte 0b00010000
+  byte 0b00000000
+  byte 0b00010000
+  byte 0b00000000
+
+; " character:
+  byte 0b00000000
+  byte 0b00101000
+  byte 0b00101000
+  byte 0b00101000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+
+; : character:
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00010000
+  byte 0b00000000
+  byte 0b00010000
+  byte 0b00000000
+  byte 0b00000000
+
+; ; character:
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00010000
+  byte 0b00000000
+  byte 0b00010000
+  byte 0b00010000
+  byte 0b00100000
+
+; . character:
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00010000
+  byte 0b00000000
+
+; , character:
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00001000
+  byte 0b00010000
+
+; null:
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+
+; new line:
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+  byte 0b00000000
+
+; shift lock:
+  byte 0b00000000
+  byte 0b00010000
+  byte 0b00101000
+  byte 0b01000100
+  byte 0b01101100
+  byte 0b00101000
+  byte 0b00111000
+  byte 0b00000000
+
+; backspace:
   byte 0b00000000
   byte 0b00011110
   byte 0b00100010
