@@ -62,9 +62,9 @@ always @(*) begin
 end
 
 always @(*) begin
-  if (mode == rst_snd || mode == rst_del) begin
+  if (state == rst_snd || state == rst_del) begin
     LCD_DIN = rst_seq[idx_cnt][bit_cnt];
-  end else if (mode == idle) begin
+  end else if (state == idle) begin
     LCD_DIN = ram_wr[bit_cnt];
   end else begin
     LCD_DIN = ram_data_rd[bit_cnt>>1];
@@ -72,9 +72,9 @@ always @(*) begin
 end
 
 always @(*) begin
-  if (mode == rst_snd || mode == rst_del) begin 
+  if (state == rst_snd || state == rst_del) begin 
     LCD_DC = dc[idx_cnt];
-  end else if (mode == idle) begin
+  end else if (state == idle) begin
     LCD_DC = 1'b0;
   end else begin
     LCD_DC = 1'b1;
@@ -155,7 +155,7 @@ vram vram_2 (
 
 
 // Registers
-reg [1:0] mode = rst_snd;
+reg [1:0] state = rst_snd;
 reg idle_wait = 1'b0;
 
 reg [15:0] bit_cnt = 16'd7;
@@ -166,35 +166,35 @@ localparam ram_wr = 8'b00101100; // RAM_WR LCD Command
 
 // State Machine
 always @(posedge LCD_CLK) begin
-  if (mode == rst_del && idx_cnt == 16'd19 && del_cnt == 32'd0) begin
+  if (state == rst_del && idx_cnt == 16'd19 && del_cnt == 32'd0) begin
     LCD_CS <= 1'b1;
     bit_cnt <= 16'd7;
     gpu_busy <= 1'b0;
     idle_wait <= 1'b1;
-    mode <= idle;
+    state <= idle;
 
-  end else if (mode == rst_snd) begin
+  end else if (state == rst_snd) begin
     if (bit_cnt == 16'd0) begin
       bit_cnt <= 16'd7;
       idx_cnt <= idx_cnt + 16'd1;
       if (delay[idx_cnt] != 16'd0) begin
         LCD_CS <= 1'b1;
         del_cnt <= delay[idx_cnt];
-        mode <= rst_del; 
+        state <= rst_del; 
       end
     end else begin
       bit_cnt <= bit_cnt - 16'd1;
     end
 
-  end else if (mode == rst_del) begin
+  end else if (state == rst_del) begin
     if (del_cnt == 32'd0) begin
       LCD_CS <= 1'b0;
-      mode <= rst_snd;
+      state <= rst_snd;
     end else begin
       del_cnt <= del_cnt - 32'd1;
     end
 
-  end else if (mode == idle) begin
+  end else if (state == idle) begin
     if (idle_wait) begin
       if (cpu_frame_ready) begin
         idle_wait <= 1'b0;
@@ -211,12 +211,12 @@ always @(posedge LCD_CLK) begin
 
         bit_cnt <= 16'd11;
         idx_cnt <= 16'd0;
-        mode <= send;
+        state <= send;
       end else begin
         bit_cnt <= bit_cnt - 16'd1;
       end
     end
-  end else if (mode == send) begin
+  end else if (state == send) begin
     if (bit_cnt == 16'd0) begin
       bit_cnt <= 16'd11;
       if (idx_cnt+16'd1 < 4*resolution) begin
@@ -227,7 +227,7 @@ always @(posedge LCD_CLK) begin
         idx_cnt <= 16'd0;
         gpu_busy <= 1'b0;
         idle_wait <= 1'b1;
-        mode <= idle;
+        state <= idle;
       end
     end else begin
       bit_cnt <= bit_cnt - 16'd1;

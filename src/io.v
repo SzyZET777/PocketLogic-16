@@ -22,7 +22,13 @@ module io (
   output LCD_DC,
 
   // Buzzer IO
-  output BUZZER
+  output BUZZER,
+
+  // SD IO
+  input SD_DO,
+  output SD_DI,
+  output SD_CS,
+  output SD_CLK
 );
 
 
@@ -33,6 +39,8 @@ localparam clk_khz = 16'd27000;
 // IO ports
 localparam lcd_ports_start = 16'hC000;
 localparam lcd_ports_end = 16'hE800;
+localparam sd_ports_start = 16'hE800;
+localparam sd_ports_end = 16'hEA00;
 localparam leds_port = 16'hF000;
 localparam us_timer_port = 16'hF002;
 localparam ms_timer_port = 16'hF004;
@@ -44,14 +52,21 @@ localparam buzzer_port = 16'hF00C;
 
 // IO input mux
 reg [15:0] io_data_inp_tmp;
-reg io_sel = 1'b0;
+reg [1:0] io_sel = 2'b00;
 
 always @(posedge clk) begin
-  io_sel <= (io_port < lcd_ports_end) ? 1'b1 : 1'b0;
+  if (io_port < lcd_ports_end) begin
+    io_sel <= 2'b00;
+  end else if (io_port < sd_ports_end) begin
+    io_sel <= 2'b01;
+  end else begin
+    io_sel <= 2'b11;
+  end
 end
 
 always @(*) begin
-  if (io_sel) io_data_inp = gpu_data_out;
+  if (io_sel == 2'b00) io_data_inp = gpu_data_out;
+  else if (io_sel == 2'b01) io_data_inp = sd_data_out;
   else io_data_inp = io_data_inp_tmp;
 end
 
@@ -232,11 +247,11 @@ assign KEYBOARD_ROW[2] = ~row_enable[2];
 // Buzzer (0xF00C)
 reg [15:0] buzzer_period = 16'd0;
 reg [15:0] buzzer_cnt = 16'd0;
-reg [7:0] buzzer_clk_div = 8'd0;
+reg [7:0] buzzer_clk_div = clk_mhz;
 reg buzzer_reg = 1'b0;
 
 always @(posedge clk) begin
-  if (io_port == buzzer_port && io_we) buzzer_period <= io_data_out;
+  if (io_port == buzzer_port && io_we) buzzer_period <= (io_data_out>>1);
 end
 
 always @(posedge clk) begin
@@ -254,6 +269,32 @@ always @(posedge clk) begin
 end
 
 assign BUZZER = buzzer_reg;
+
+
+// SD Card
+wire [15:0] sd_data_out;
+wire sd_we = (io_port >= sd_ports_start && io_port < sd_ports_end) ? io_we : 1'b0;
+wire sd_busy;
+
+sd sd_controller (
+  .clk (clk),
+
+  // IO interface
+  .sd_data_out (sd_data_out),
+  .sd_data_inp (io_data_out),
+  .sd_adr      (io_port-sd_ports_start),
+  .byte_en     (byte_en),
+  .sd_we       (sd_we),
+
+  // SD / CPU communication
+  .sd_busy (sd_busy),
+
+  // SD IO
+  .SD_DI (SD_DI),
+  .SD_DO (SD_DO),
+  .SD_CS (SD_CS),
+  .SD_CLK (SD_CLK)
+);
 
 
 endmodule

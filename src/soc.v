@@ -10,7 +10,11 @@ module soc (
   output       LCD_DIN,
   output       LCD_CS,
   output       LCD_DC,
-  output       BUZZER
+  output       BUZZER,
+  input        SD_DO,
+  output       SD_DI,
+  output       SD_CS,
+  output       SD_CLK
 );
 
 
@@ -93,7 +97,13 @@ io io_controller (
   .LCD_DC  (LCD_DC),
 
   // Buzzer IO
-  .BUZZER (BUZZER)
+  .BUZZER (BUZZER),
+
+  // SD IO
+  .SD_DI (SD_DI),
+  .SD_DO (SD_DO),
+  .SD_CS (SD_CS),
+  .SD_CLK (SD_CLK)
 );
 
 

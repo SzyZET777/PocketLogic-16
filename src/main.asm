@@ -9,6 +9,24 @@ caps_lock_on:
 
 ; func main () {
 main:
+
+; Audio Test
+  ldi s0, 2000
+  ldi t0, 0xF00C
+  stw s0, [t0]
+
+  ldi t0, 0xF004
+  ldi t1, 10000 ; 10s
+  stw t1, [t0]
+audio_test_wait:
+  ldw t1, [t0]
+  brc t1, audio_test_wait
+
+  ldi s0, 0
+  ldi t0, 0xF00C
+  stw s0, [t0]
+
+
   ldi sp, 0xC000
 
 ; Set background color to grey:
