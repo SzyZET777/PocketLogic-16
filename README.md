@@ -18,7 +18,7 @@ Memory: (48KB)
   (0x4000 – 0x7FFF) 16KB - User RAM
   (0x8000 – 0xBFFF) 16KB - Dynamic Memory (heap&stack)
  
-Input/Output: (12KB)
+Input/Output: (16KB)
   (0xC000 – 0xE7FF) 10.0KB - Video RAM (128x80 @6bpp)
   (0xE800 – 0xE9FF)  0.5KB - SD Block (1 block)
   (0xEA00 - 0xEFFF)  1.5KB - Empty (Reserved Space)
