@@ -61,7 +61,7 @@ localparam buzzer_port          = 16'hF00C;
 localparam buttons_port         = 16'hF00E;
 localparam sd_read_block_port   = 16'hF010;
 localparam sd_busy_port         = 16'hF012;
-localparam sd_save_block_port   = 16'hF014;
+localparam sd_write_block_port  = 16'hF014;
 localparam sd_block_adr_port    = 16'hF016;
 
 
@@ -93,7 +93,7 @@ always @(posedge clk) begin
     gpu_busy_port : io_data_inp_tmp <= gpu_busy | cpu_frame_ready;
     keyboard_port : io_data_inp_tmp <= keyboard_data_out;
     buttons_port : io_data_inp_tmp <= buttons_reg;
-    sd_busy_port : io_data_inp_tmp <= sd_busy | sd_read_block | sd_save_block;
+    sd_busy_port : io_data_inp_tmp <= sd_busy | sd_read_block | sd_write_block;
     default : io_data_inp_tmp <= 16'h0000;
   endcase    
 end
@@ -318,7 +318,7 @@ end
 wire [15:0] sd_data_out;
 wire sd_we = (io_port >= sd_ports_start && io_port < sd_ports_end) ? io_we : 1'b0;
 wire sd_busy;
-reg sd_read_block = 1'b0, sd_save_block = 1'b0;
+reg sd_read_block = 1'b0, sd_write_block = 1'b0;
 
 reg [15:0] sd_block_adr_reg = 16'h0000;
 
@@ -333,10 +333,10 @@ sd sd_controller (
   .sd_we       (sd_we),
 
   // SD / CPU communication
-  .sd_block_adr  (sd_block_adr_reg),
-  .sd_read_block (sd_read_block),
-  .sd_save_block (sd_save_block),
-  .sd_busy       (sd_busy),
+  .sd_block_adr   (sd_block_adr_reg),
+  .sd_read_block  (sd_read_block),
+  .sd_write_block (sd_write_block),
+  .sd_busy        (sd_busy),
 
   // SD IO
   .SD_DI  (SD_DI),
@@ -352,7 +352,7 @@ end
 
 always @(posedge clk) begin
   if (sd_read_block == 1'b0) begin
-    if (io_port == sd_read_block_port && io_we && !sd_busy && !sd_save_block) begin
+    if (io_port == sd_read_block_port && io_we && !sd_busy && !sd_write_block) begin
       sd_read_block <= io_data_out[0];
     end
   end else begin
@@ -361,12 +361,12 @@ always @(posedge clk) begin
 end
 
 always @(posedge clk) begin
-  if (sd_save_block == 1'b0) begin
-    if (io_port == sd_save_block_port && io_we && !sd_busy && !sd_read_block) begin
-      sd_save_block <= io_data_out[0];
+  if (sd_write_block == 1'b0) begin
+    if (io_port == sd_write_block_port && io_we && !sd_busy && !sd_read_block) begin
+      sd_write_block <= io_data_out[0];
     end
   end else begin
-    if (sd_busy) sd_save_block <= 1'b0;
+    if (sd_busy) sd_write_block <= 1'b0;
   end
 end
 

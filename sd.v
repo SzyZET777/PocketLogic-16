@@ -11,7 +11,7 @@ module sd (
   // SD / CPU communication
   input [15:0] sd_block_adr,
   input sd_read_block,
-  input sd_save_block,
+  input sd_write_block,
   output reg sd_busy,
 
   // SD IO
@@ -61,6 +61,12 @@ localparam wait_for_data_block = 8'h11;
 localparam read_data_block = 8'h12;
 localparam read_data_packet_crc = 8'h13;
 localparam send_cmd_write = 8'h14;
+localparam wait_for_write_r1 = 8'h15;
+localparam check_write_r1 = 8'h16;
+localparam send_data_token = 8'h17;
+localparam send_data_packet = 8'h18;
+localparam send_data_packet_crc = 8'h19;
+localparam check_data_packet_response = 8'h20;
 
 
 // Clock Frequency
@@ -106,6 +112,8 @@ localparam volt_cmd = 48'h48000001AA87;
 localparam  app_cmd = 40'h7700000000;
 localparam init_cmd = 40'h6940000000;
 wire [39:0] read_cmd = {24'h510000, 16'h0800+sd_block_adr};
+wire [39:0] write_cmd = {24'h580000, 16'h0800+sd_block_adr};
+localparam data_token = 16'hFFFE;
 
 
 always @(*) begin
@@ -119,6 +127,12 @@ always @(*) begin
     SD_DI = init_cmd[bit_cnt];
   end else if (state == send_cmd_read) begin
     SD_DI = read_cmd[bit_cnt];
+  end else if (state == send_cmd_write) begin
+    SD_DI = write_cmd[bit_cnt];
+  end else if (state == send_data_token) begin
+    SD_DI = data_token[bit_cnt];
+  end else if (state == send_data_packet) begin
+    SD_DI = sd_data_out[bit_cnt];
   end else begin
     SD_DI = 1'b1;
   end
@@ -245,6 +259,11 @@ always @(posedge SD_CLK) begin
       SD_CS <= 1'b0;
       bit_cnt <= 16'd39;
       state <= send_cmd_read;
+    end else if (sd_write_block) begin
+      sd_busy <= 1'b1;
+      SD_CS <= 1'b0;
+      bit_cnt <= 16'd39;
+      state <= send_cmd_write;
     end
   end else if (state == send_cmd_read) begin
     if (bit_cnt != 16'd0) begin
@@ -295,6 +314,68 @@ always @(posedge SD_CLK) begin
       sd_busy <= 1'b0;
       SD_CS <= 1'b1;
       state <= idle;
+    end else begin
+      bit_cnt <= bit_cnt - 16'd1;
+    end
+  end else if (state == send_cmd_write) begin
+    if (bit_cnt != 16'd0) begin
+      bit_cnt <= bit_cnt - 16'd1;
+    end else begin
+      bit_cnt <= 16'd7;
+      state <= wait_for_write_r1;
+    end
+  end else if (state == wait_for_write_r1) begin
+    if (SD_DO == 1'b0) begin
+      r1_response[bit_cnt] <= SD_DO;
+      bit_cnt <= bit_cnt - 16'd1;
+      state <= check_write_r1;
+    end
+  end else if (state == check_write_r1) begin
+    if (bit_cnt == 16'd0) begin
+      bit_cnt <= 16'd15;
+      state <= send_data_token;
+    end else begin
+      r1_response[bit_cnt] <= SD_DO;
+      bit_cnt <= bit_cnt - 16'd1;
+    end
+  end else if (state == send_data_token) begin
+    if (bit_cnt != 16'd0) begin
+      bit_cnt <= bit_cnt - 16'd1;
+    end else begin
+      bit_cnt <= 16'd15;
+      idx_cnt <= 16'd0;
+      block_adr_reg <= 16'd0;
+      state <= send_data_packet;
+    end
+  end else if (state == send_data_packet) begin
+    if (bit_cnt == 16'd0) begin
+      block_adr_reg <= idx_cnt + 16'd2;
+      idx_cnt <= idx_cnt + 16'd2;
+      if (idx_cnt == 16'd510) begin
+        bit_cnt <= 16'd15;
+        state <= send_data_packet_crc;
+      end else begin
+        bit_cnt <= 16'd15;
+      end
+    end else begin
+      bit_cnt <= bit_cnt - 16'd1;
+    end
+  end else if (state == send_data_packet_crc) begin
+    if (bit_cnt == 16'd0) begin
+      bit_cnt <= 16'd7;
+      state <= check_data_packet_response;
+    end else begin
+      bit_cnt <= bit_cnt - 16'd1;
+    end
+  end else if (state == check_data_packet_response) begin
+    if (bit_cnt == 16'd0) begin
+      if (SD_DO == 1'b1) begin
+        sd_busy <= 1'b0;
+        SD_CS <= 1'b1;
+        state <= idle;
+      end else begin
+        bit_cnt <= 16'd7;
+      end
     end else begin
       bit_cnt <= bit_cnt - 16'd1;
     end

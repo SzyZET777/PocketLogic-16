@@ -10,7 +10,7 @@ caps_lock_on:
 ; func main () {
 main:
 
-  jmp skip_audio_and_btn_tests
+  ; jmp skip_audio_and_btn_tests
 
 ; Audio Test
   ldi s0, 2000
@@ -18,7 +18,7 @@ main:
   stw s0, [t0]
 
   ldi t0, 0xF004
-  ldi t1, 10000 ; 10s
+  ldi t1, 3000 ; 3s
   stw t1, [t0]
 audio_test_wait:
   ldw t1, [t0]
@@ -79,6 +79,21 @@ wait_for_sd_2:
   ldi t1, 0b1001
   stw t1, [t0]
 
+
+  ldi t0, 0xE800
+  ldi t1, 0x1A12
+  stw t1, [t0]
+
+  ldi t0, 0xF014
+  ldi t1, 1
+  stw t1, [t0]
+
+  ldi t0, 0xF012
+wait_for_sd_3:
+  ldw t1, [t0]
+  brc t1, wait_for_sd_3
+
+
   mov s0, 0
 sd_card_test_loop:
   ldi t0, 0xE800
@@ -126,7 +141,7 @@ loop:
   ldi t0, text_buffer
   add t0, s0
   ldi t1, 0x04
-  ; stb t1, [t0]
+  stb t1, [t0]
 
 ; Set cursor color to blue (0x03):
   ldi t0, front_color_buffer
