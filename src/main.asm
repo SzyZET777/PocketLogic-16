@@ -10,6 +10,8 @@ caps_lock_on:
 ; func main () {
 main:
 
+  jmp skip_audio_and_btn_tests
+
 ; Audio Test
   ldi s0, 2000
   ldi t0, 0xF00C
@@ -25,6 +27,70 @@ audio_test_wait:
   ldi s0, 0
   ldi t0, 0xF00C
   stw s0, [t0]
+
+
+; Buttons Test
+  ldi t0, 0xF004
+  ldi t1, 10000 ; 10s
+  stw t1, [t0]
+
+buttons_loop:
+  ldi t0, 0xF00E
+  ldw t1, [t0]
+  shr t1, 2
+  ldi t0, 0xF000
+  stw t1, [t0]
+  ldi t0, 0xF004
+  ldw t1, [t0]
+  brc t1, buttons_loop
+
+skip_audio_and_btn_tests:
+
+
+  ldi t0, 0xF000
+  ldi t1, 0b1011
+  stw t1, [t0]
+
+; SD Card Test
+  ldi t0, 0xF012
+wait_for_sd_1:
+  ldw t1, [t0]
+  brc t1, wait_for_sd_1
+
+  ldi t0, 0xF000
+  ldi t1, 0b1010
+  stw t1, [t0]
+
+  ldi t0, 0xF010
+  mov t1, 1
+  stw t1, [t0]
+
+  ldi t0, 0xF012
+wait_for_sd_2:
+  ldw t1, [t0]
+  brc t1, wait_for_sd_2
+
+  ldi t0, 0xF000
+  ldi t1, 0b1001
+  stw t1, [t0]
+
+  mov s0, 0
+sd_card_test_loop:
+  ldi t0, 0xE800
+  add t0, s0
+  ldb t1, [t0]
+  ldi t0, text_buffer
+  add t0, s0
+  stb t1, [t0]
+  add s0, 1
+  mov t0, s0
+  dfi t0, 64
+  brc t0, sd_card_test_loop
+
+  ldi t0, 0xE800
+  ldb t1, [t0]
+  ldi t0, 0xF000
+  stw t1, [t0]
 
 
   ldi sp, 0xC000
@@ -55,7 +121,7 @@ loop:
   ldi t0, text_buffer
   add t0, s0
   ldi t1, 0x04
-  stb t1, [t0]
+  ; stb t1, [t0]
 
 ; Set cursor color to blue (0x03):
   ldi t0, front_color_buffer
@@ -546,7 +612,7 @@ char_table:
   byte 0b01000100
   byte 0b01001000
   byte 0b01110000
-  byte 0b0100100
+  byte 0b01001000
   byte 0b01000100
   byte 0b01000100
   byte 0b00000000
@@ -1596,6 +1662,7 @@ char_table:
 
 ; data text_buffer {
 text_buffer:
+  text "--- data not from sd"
   reserve 160
 ; }
 

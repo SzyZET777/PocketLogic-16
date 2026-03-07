@@ -24,6 +24,16 @@ module io (
   // Buzzer IO
   output BUZZER,
 
+  // Buttons IO
+  input BUTTON_U,
+  input BUTTON_D,
+  input BUTTON_L,
+  input BUTTON_R,
+  input BUTTON_ENT,
+  input BUTTON_ESC,
+  input BUTTON_F1,
+  input BUTTON_F2,
+
   // SD IO
   input SD_DO,
   output SD_DI,
@@ -48,6 +58,10 @@ localparam cpu_frame_ready_port = 16'hF006;
 localparam gpu_busy_port = 16'hF008;
 localparam keyboard_port = 16'hF00A;
 localparam buzzer_port = 16'hF00C;
+localparam buttons_port = 16'hF00E;
+localparam sd_read_block_port = 16'hF010;
+localparam sd_busy_port = 16'hF012;
+localparam sd_save_block_port = 16'hF014;
 
 
 // IO input mux
@@ -75,8 +89,10 @@ always @(posedge clk) begin
     us_timer_port : io_data_inp_tmp <= us_timer;
     ms_timer_port : io_data_inp_tmp <= ms_timer;
     cpu_frame_ready_port : io_data_inp_tmp <= cpu_frame_ready;
-    gpu_busy_port : io_data_inp_tmp <= gpu_busy;
+    gpu_busy_port : io_data_inp_tmp <= gpu_busy | cpu_frame_ready;
     keyboard_port : io_data_inp_tmp <= keyboard_data_out;
+    buttons_port : io_data_inp_tmp <= buttons_reg;
+    sd_busy_port : io_data_inp_tmp <= sd_busy | sd_read_block | sd_save_block;
     default : io_data_inp_tmp <= 16'h0000;
   endcase    
 end
@@ -129,7 +145,7 @@ always @(posedge clk) begin
   if (io_port == leds_port && io_we) leds_reg <= io_data_out[5:0];
 end
 
-assign LEDS = ~leds_reg;
+assign LEDS = ~DEBUG_OUT[5:0]; // ~leds_reg;
 
 
 // Microsecond timer (0xF002)
@@ -179,7 +195,18 @@ reg [2:0] row_enable = 3'b001;
 always @(posedge clk) begin
   if (cycle_ms_timer == 16'd0) begin
     cycle_keybaord_timer <= clk_khz;
-    if (keyboard_data_tmp_0 != 16'h00) begin
+
+    if (buttons_reg[4]) begin
+      keyboard_data_out <= 16'h01;
+    end else if (buttons_reg[0]) begin
+      keyboard_data_out <= 16'h20;
+    end else if (buttons_reg[1]) begin
+      keyboard_data_out <= 16'h21;
+    end else if (buttons_reg[2]) begin 
+      keyboard_data_out <= 16'h22;
+    end else if (buttons_reg[3]) begin
+      keyboard_data_out <= 16'h23;
+    end else if (keyboard_data_tmp_0 != 16'h00) begin
       keyboard_data_out <= keyboard_data_tmp_0;
     end else if (keyboard_data_tmp_1 != 16'h00) begin
       keyboard_data_out <= keyboard_data_tmp_1;
@@ -271,10 +298,28 @@ end
 assign BUZZER = buzzer_reg;
 
 
+// Buttons (0xF00E)
+reg [7:0] buttons_reg;
+
+always @(*) begin
+  buttons_reg[0] = ~BUTTON_U;
+  buttons_reg[1] = ~BUTTON_D;
+  buttons_reg[2] = ~BUTTON_L;
+  buttons_reg[3] = ~BUTTON_R;
+  buttons_reg[4] = ~BUTTON_ENT;
+  buttons_reg[5] = ~BUTTON_ESC;
+  buttons_reg[6] = ~BUTTON_F1;
+  buttons_reg[7] = ~BUTTON_F2;
+end
+
+
 // SD Card
 wire [15:0] sd_data_out;
 wire sd_we = (io_port >= sd_ports_start && io_port < sd_ports_end) ? io_we : 1'b0;
 wire sd_busy;
+reg sd_read_block = 1'b0, sd_save_block = 1'b0;
+
+wire [7:0] DEBUG_OUT;
 
 sd sd_controller (
   .clk (clk),
@@ -287,7 +332,12 @@ sd sd_controller (
   .sd_we       (sd_we),
 
   // SD / CPU communication
+  .sd_read_block (sd_read_block),
+  .sd_save_block (sd_save_block),
   .sd_busy (sd_busy),
+
+  // DEBUG
+  .DEBUG_OUT (DEBUG_OUT),
 
   // SD IO
   .SD_DI (SD_DI),
@@ -295,6 +345,27 @@ sd sd_controller (
   .SD_CS (SD_CS),
   .SD_CLK (SD_CLK)
 );
+
+// SD / CPU communication
+always @(posedge clk) begin
+  if (sd_read_block == 1'b0) begin
+    if (io_port == sd_read_block_port && io_we && !sd_busy) begin
+      sd_read_block <= io_data_out[0];
+    end
+  end else begin
+    if (sd_busy) sd_read_block <= 1'b0;
+  end
+end
+
+always @(posedge clk) begin
+  if (sd_save_block == 1'b0) begin
+    if (io_port == sd_save_block_port && io_we && !sd_busy) begin
+      sd_save_block <= io_data_out[0];
+    end
+  end else begin
+    if (sd_busy) sd_save_block <= 1'b0;
+  end
+end
 
 
 endmodule

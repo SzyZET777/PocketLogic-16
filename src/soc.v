@@ -11,6 +11,14 @@ module soc (
   output       LCD_CS,
   output       LCD_DC,
   output       BUZZER,
+  input        BUTTON_U,
+  input        BUTTON_D,
+  input        BUTTON_L,
+  input        BUTTON_R,
+  input        BUTTON_ENT,
+  input        BUTTON_ESC,
+  input        BUTTON_F1,
+  input        BUTTON_F2,
   input        SD_DO,
   output       SD_DI,
   output       SD_CS,
@@ -98,6 +106,16 @@ io io_controller (
 
   // Buzzer IO
   .BUZZER (BUZZER),
+
+  // Button IO
+  .BUTTON_U   (BUTTON_U),
+  .BUTTON_D   (BUTTON_D),
+  .BUTTON_L   (BUTTON_L),
+  .BUTTON_R   (BUTTON_R),
+  .BUTTON_ENT (BUTTON_ENT),
+  .BUTTON_ESC (BUTTON_ESC),
+  .BUTTON_F1  (BUTTON_F1),
+  .BUTTON_F2  (BUTTON_F2),
 
   // SD IO
   .SD_DI (SD_DI),
