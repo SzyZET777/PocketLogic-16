@@ -5,12 +5,15 @@ jmp main
 ; Global Variables
 caps_lock_on: 
   byte 0
+title_bar_str:
+  text "PocketLogic-16"
+  byte 0
 
 
 ; func main () {
 main:
 
-  jmp skip_audio_and_btn_tests
+  ; jmp skip_audio_and_btn_tests
 
 ; Audio Test
   ldi s0, 2000
@@ -18,7 +21,7 @@ main:
   stw s0, [t0]
 
   ldi t0, 0xF004
-  ldi t1, 10000 ; 10s
+  ldi t1, 500 ; 0.5s
   stw t1, [t0]
 audio_test_wait:
   ldw t1, [t0]
@@ -31,7 +34,7 @@ audio_test_wait:
 
 ; Buttons Test
   ldi t0, 0xF004
-  ldi t1, 10000 ; 10s
+  ldi t1, 1000 ; 1s
   stw t1, [t0]
 
 buttons_loop:
@@ -51,7 +54,12 @@ skip_audio_and_btn_tests:
   ldi t1, 0b1011
   stw t1, [t0]
 
+
 ; SD Card Test
+  ldi t0, 0xF016
+  ldi t1, 0
+  stw t1, [t0]
+
   ldi t0, 0xF012
 wait_for_sd_1:
   ldw t1, [t0]
@@ -74,6 +82,21 @@ wait_for_sd_2:
   ldi t1, 0b1001
   stw t1, [t0]
 
+
+  ldi t0, 0xE800
+  ldi t1, 0x1A12
+  stw t1, [t0]
+
+  ldi t0, 0xF014
+  ldi t1, 1
+  stw t1, [t0]
+
+  ldi t0, 0xF012
+wait_for_sd_3:
+  ldw t1, [t0]
+  brc t1, wait_for_sd_3
+
+
   mov s0, 0
 sd_card_test_loop:
   ldi t0, 0xE800
@@ -81,6 +104,7 @@ sd_card_test_loop:
   ldb t1, [t0]
   ldi t0, text_buffer
   add t0, s0
+  adi t0, 93
   stb t1, [t0]
   add s0, 1
   mov t0, s0
@@ -111,6 +135,7 @@ set_text_box_color_loop:
   sub s0, 1
   ldi t0, back_color_buffer
   add t0, s0
+  adi t0, 32
   ldi t1, 0b111111
   stb t1, [t0]
   brc s0, set_text_box_color_loop
@@ -120,12 +145,14 @@ loop:
 ; Draw line cursor (0x04):
   ldi t0, text_buffer
   add t0, s0
+  adi t0, 32
   ldi t1, 0x04
-  ; stb t1, [t0]
+  stb t1, [t0]
 
 ; Set cursor color to blue (0x03):
   ldi t0, front_color_buffer
   add t0, s0
+  adi t0, 32
   mov t1, 0b11
   stb t1, [t0]
 
@@ -162,6 +189,7 @@ caps_lock_not_pressed:
   brc t0, backspace_not_pressed
   ldi t0, text_buffer
   add t0, s0
+  adi t0, 32
   mov t1, 0
   stb t1, [t0]
   sub s0, 1
@@ -178,6 +206,7 @@ backspace_not_pressed:
 ; Draw text character
   ldi t0, text_buffer
   add t0, s0
+  adi t0, 32
 ; Check for alt characters
   equ t1, 0
   shl t1, 5
@@ -193,6 +222,7 @@ backspace_not_pressed:
 ; Set new character color to black (0x00):
   ldi t0, front_color_buffer
   add t0, s0
+  adi t0, 32
   mov t1, 0
   stb t1, [t0]
 
@@ -201,6 +231,10 @@ backspace_not_pressed:
   and s0, t0
 
 skip:
+
+  ldi a0, 0b000011
+  ldi a1, title_bar_str
+  jsr ra, draw_title_bar
 
   jsr ra, draw_text_buffer
   jsr ra, refresh_screen
@@ -352,6 +386,39 @@ draw_text_buffer_loop_x:
   ldw s0, [sp]
   add sp, 2
   ldw ra, [sp]
+  add sp, 2
+
+  ret ra
+; }
+
+
+; func draw_title_bar (#col, *str) {
+draw_title_bar:
+  sub sp, 2
+  stw s0, [sp]
+
+  ldi s0, 16
+draw_title_bar_loop:
+  sub s0, 1
+  ldi t0, front_color_buffer
+  add t0, s0
+  ldi t1, 0b111111
+  stb t1, [t0]
+  ldi t0, back_color_buffer
+  add t0, s0
+  stb a0, [t0]
+  brc s0, draw_title_bar_loop
+
+  ldi s0, text_buffer
+write_title_bar_str_loop:
+  ldb t0, [a1]
+  stb t0, [s0]
+  add s0, 1
+  add a1, 1
+  ldb t0, [a1]
+  brc t0, write_title_bar_str_loop
+
+  ldw s0, [sp]
   add sp, 2
 
   ret ra
@@ -1662,7 +1729,6 @@ char_table:
 
 ; data text_buffer {
 text_buffer:
-  text "--- data not from sd"
   reserve 160
 ; }
 

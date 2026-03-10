@@ -1,3 +1,4 @@
+clear
 if ! gcc assembler/main.c -o main -std=c17 -Os; then
   exit -1
 fi

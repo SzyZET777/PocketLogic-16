@@ -56,7 +56,7 @@ char* registers[] = {"a0","a1","a2","a3","t0","t1","t2","t3",
 
 char* directives[] = {"byte", "word", "text", "reserve", "define", "\0"};
 
-char* pl16_to_ascii = {"@@@@@ qwertyuiopasdfghjklzxcvbnm@@@@@_1234567890\0"};
+char* pl16_to_ascii = {"@@@@@ QWERTYUIOPASDFGHJKLZXCVBNM@@@@@_1234567890<>=+-*/()!?\":;.,@@@@@ qwertyuiopasdfghjklzxcvbnm@@@@@_1234567890<>=+-*/()!?\":;.,\0"};
 
 
 
@@ -65,7 +65,8 @@ FILE* source_code;
 FILE* tmp_file;
 FILE* output_file;
 
-bool negate_next_number;
+bool negate_next_number = false;
+bool tolower_next_chars = true;
 int token_index = 0;
 int symbol_index = 0;
 int pass_num = 0;
@@ -342,7 +343,7 @@ void handle_directives(int* adr) {
       }
     }
 
-    *adr += strlen(peek().string_value - 2);
+    *adr += strlen(peek().string_value) - 2;
 
   } else if (strcmp(peek().string_value, "reserve") == 0) {
     if (!next()) return;
@@ -385,12 +386,16 @@ void lexer_step(char line[128]) {
   char sign;
 
   negate_next_number = false;
+  tolower_next_chars = true;
 
   for (int i = 0; line[i] != '\0' && line[i] != '\n' && line[i] != ';'; i++) {
     if (line[i] == '-') negate_next_number = true;
+    if (line[i] == '\"') tolower_next_chars = !tolower_next_chars;
     if (find_char_in_arr(line[i], skipped_chars) != -1) continue;
 
-    tok_buffer[tok_buffer_index] = tolower(line[i]);
+    if (tolower_next_chars) tok_buffer[tok_buffer_index] = tolower(line[i]);
+    else tok_buffer[tok_buffer_index] = line[i];
+
     tok_buffer_index++;
 
     if (find_char_in_arr(line[i+1], skipped_chars) != -1 || line[i+1] == 0) {

@@ -47,21 +47,22 @@ localparam clk_mhz = 16'd27;
 localparam clk_khz = 16'd27000;
 
 // IO ports
-localparam lcd_ports_start = 16'hC000;
-localparam lcd_ports_end = 16'hE800;
-localparam sd_ports_start = 16'hE800;
-localparam sd_ports_end = 16'hEA00;
-localparam leds_port = 16'hF000;
-localparam us_timer_port = 16'hF002;
-localparam ms_timer_port = 16'hF004;
+localparam lcd_ports_start      = 16'hC000;
+localparam lcd_ports_end        = 16'hE800;
+localparam sd_ports_start       = 16'hE800;
+localparam sd_ports_end         = 16'hEA00;
+localparam leds_port            = 16'hF000;
+localparam us_timer_port        = 16'hF002;
+localparam ms_timer_port        = 16'hF004;
 localparam cpu_frame_ready_port = 16'hF006;
-localparam gpu_busy_port = 16'hF008;
-localparam keyboard_port = 16'hF00A;
-localparam buzzer_port = 16'hF00C;
-localparam buttons_port = 16'hF00E;
-localparam sd_read_block_port = 16'hF010;
-localparam sd_busy_port = 16'hF012;
-localparam sd_save_block_port = 16'hF014;
+localparam gpu_busy_port        = 16'hF008;
+localparam keyboard_port        = 16'hF00A;
+localparam buzzer_port          = 16'hF00C;
+localparam buttons_port         = 16'hF00E;
+localparam sd_read_block_port   = 16'hF010;
+localparam sd_busy_port         = 16'hF012;
+localparam sd_write_block_port  = 16'hF014;
+localparam sd_block_adr_port    = 16'hF016;
 
 
 // IO input mux
@@ -92,7 +93,7 @@ always @(posedge clk) begin
     gpu_busy_port : io_data_inp_tmp <= gpu_busy | cpu_frame_ready;
     keyboard_port : io_data_inp_tmp <= keyboard_data_out;
     buttons_port : io_data_inp_tmp <= buttons_reg;
-    sd_busy_port : io_data_inp_tmp <= sd_busy | sd_read_block | sd_save_block;
+    sd_busy_port : io_data_inp_tmp <= sd_busy | sd_read_block | sd_write_block;
     default : io_data_inp_tmp <= 16'h0000;
   endcase    
 end
@@ -145,7 +146,7 @@ always @(posedge clk) begin
   if (io_port == leds_port && io_we) leds_reg <= io_data_out[5:0];
 end
 
-assign LEDS = ~DEBUG_OUT[5:0]; // ~leds_reg;
+assign LEDS = ~leds_reg;
 
 
 // Microsecond timer (0xF002)
@@ -317,9 +318,9 @@ end
 wire [15:0] sd_data_out;
 wire sd_we = (io_port >= sd_ports_start && io_port < sd_ports_end) ? io_we : 1'b0;
 wire sd_busy;
-reg sd_read_block = 1'b0, sd_save_block = 1'b0;
+reg sd_read_block = 1'b0, sd_write_block = 1'b0;
 
-wire [7:0] DEBUG_OUT;
+reg [15:0] sd_block_adr_reg = 16'h0000;
 
 sd sd_controller (
   .clk (clk),
@@ -332,24 +333,26 @@ sd sd_controller (
   .sd_we       (sd_we),
 
   // SD / CPU communication
-  .sd_read_block (sd_read_block),
-  .sd_save_block (sd_save_block),
-  .sd_busy (sd_busy),
-
-  // DEBUG
-  .DEBUG_OUT (DEBUG_OUT),
+  .sd_block_adr   (sd_block_adr_reg),
+  .sd_read_block  (sd_read_block),
+  .sd_write_block (sd_write_block),
+  .sd_busy        (sd_busy),
 
   // SD IO
-  .SD_DI (SD_DI),
-  .SD_DO (SD_DO),
-  .SD_CS (SD_CS),
+  .SD_DI  (SD_DI),
+  .SD_DO  (SD_DO),
+  .SD_CS  (SD_CS),
   .SD_CLK (SD_CLK)
 );
 
 // SD / CPU communication
 always @(posedge clk) begin
+  if (io_port == sd_block_adr_port && io_we) sd_block_adr_reg <= io_data_out;
+end
+
+always @(posedge clk) begin
   if (sd_read_block == 1'b0) begin
-    if (io_port == sd_read_block_port && io_we && !sd_busy) begin
+    if (io_port == sd_read_block_port && io_we && !sd_busy && !sd_write_block) begin
       sd_read_block <= io_data_out[0];
     end
   end else begin
@@ -358,12 +361,12 @@ always @(posedge clk) begin
 end
 
 always @(posedge clk) begin
-  if (sd_save_block == 1'b0) begin
-    if (io_port == sd_save_block_port && io_we && !sd_busy) begin
-      sd_save_block <= io_data_out[0];
+  if (sd_write_block == 1'b0) begin
+    if (io_port == sd_write_block_port && io_we && !sd_busy && !sd_read_block) begin
+      sd_write_block <= io_data_out[0];
     end
   end else begin
-    if (sd_busy) sd_save_block <= 1'b0;
+    if (sd_busy) sd_write_block <= 1'b0;
   end
 end
 
