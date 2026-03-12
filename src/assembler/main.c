@@ -56,7 +56,7 @@ char* registers[] = {"a0","a1","a2","a3","t0","t1","t2","t3",
 
 char* directives[] = {"byte", "word", "text", "reserve", "define", "\0"};
 
-char* pl16_to_ascii = {"@@@@@ QWERTYUIOPASDFGHJKLZXCVBNM@@@@@_1234567890<>=+-*/()!?\":;.,@@@@@ qwertyuiopasdfghjklzxcvbnm@@@@@_1234567890<>=+-*/()!?\":;.,\0"};
+char* pl16_to_ascii = {"@@@@@ qwertyuiopasdfghjklzxcvbnm@@@@@_1234567890<>=+-*/()!?\":;.,@@@@@ QWERTYUIOPASDFGHJKLZXCVBNM@@@@@_1234567890<>=+-*/()!?\":;.,\0"};
 
 
 
