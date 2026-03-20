@@ -149,7 +149,7 @@ reg [15:0] lsu_out;
 
 always @(*) begin
   case (opc)
-    opc_ldb : lsu_out = mem_byte_rd;
+    opc_ldb : lsu_out = {8'h00, mem_byte_rd};
     opc_ldw : lsu_out = mem_data_rd;
 
     default : lsu_out = src1; // reg1 = reg1 (NOP)

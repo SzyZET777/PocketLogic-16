@@ -325,6 +325,13 @@ void handle_directives(int* adr) {
     char data_str[5];
     convert_to_hex_string(peek().value, data_str, 4);
 
+    if (*adr % 2 == 1) {
+      *adr += 1;
+      if (pass_num == 2) {
+        fprintf(tmp_file, "00");
+      }
+    }
+
     if (pass_num == 2) {
       fprintf(tmp_file, "%s", data_str);
     }
@@ -485,6 +492,12 @@ void parser_step(int* adr) {
   if (peek().type == END) return;
 
   if (peek().type == SYMBOL) {
+    if (*adr % 2 == 1) {
+      *adr += 1;
+      if (pass_num == 2) {
+        fprintf(tmp_file, "00");
+      }
+    }
     if (find_sym_in_sym_tab(peek().string_value) == -1 && pass_num == 1) {
       strcpy(sym_tab[symbol_index].name, peek().string_value);
       sym_tab[symbol_index].value = *adr;
@@ -508,13 +521,6 @@ void parser_step(int* adr) {
       convert_to_hex_string(asm_ins, asm_ins_str, 8);
     } else {
       convert_to_hex_string(asm_ins, asm_ins_str, 4);
-    }
-
-    if (*adr % 2 == 1) {
-      *adr += 1;
-      if (pass_num == 2) {
-        fprintf(tmp_file, "00");
-      }
     }
 
     if (pass_num == 2) {

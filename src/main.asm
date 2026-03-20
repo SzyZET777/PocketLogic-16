@@ -1,5 +1,13 @@
 ; Start main:
-jmp main
+  jmp main
+
+
+; Constants:
+define FRAMEBUFFER, 0xC000
+define SD_CARD_BLOCK, 0xE800
+define LEDS, 0xF000
+define KEYBOARD, 0xF00A
+define BUTTONS, 0xF00E
 
 
 ; Global Variables & Buffers
@@ -9,6 +17,12 @@ caps_lock_on:
 title_bar_str:
   text "PocketLogic-16"
   byte 0
+
+cursor_pos:
+  byte 0
+
+app_menu_pos:
+  word 0
 
 caps_lock_on_str:
   text "ABC"
@@ -25,204 +39,16 @@ text_color_buffer:
 
 ; func main () {
 main:
-
-  ; jmp skip_audio_and_btn_tests
-
-; Audio Test
-  ldi s0, 2000
-  ldi t0, 0xF00C
-  stw s0, [t0]
-
-  ldi t0, 0xF004
-  ldi t1, 500 ; 0.5s
-  stw t1, [t0]
-audio_test_wait:
-  ldw t1, [t0]
-  brc t1, audio_test_wait
-
-  ldi s0, 0
-  ldi t0, 0xF00C
-  stw s0, [t0]
-
-
-; Buttons Test
-  ldi t0, 0xF004
-  ldi t1, 1000 ; 1s
-  stw t1, [t0]
-
-buttons_loop:
-  ldi t0, 0xF00E
-  ldw t1, [t0]
-  shr t1, 2
-  ldi t0, 0xF000
-  stw t1, [t0]
-  ldi t0, 0xF004
-  ldw t1, [t0]
-  brc t1, buttons_loop
-
-skip_audio_and_btn_tests:
-
-
-  ldi t0, 0xF000
-  ldi t1, 0b1011
-  stw t1, [t0]
-
-
-; SD Card Test
-  ldi t0, 0xF016
-  ldi t1, 0
-  stw t1, [t0]
-
-  ldi t0, 0xF012
-wait_for_sd_1:
-  ldw t1, [t0]
-  brc t1, wait_for_sd_1
-
-  ldi t0, 0xF000
-  ldi t1, 0b1010
-  stw t1, [t0]
-
-  ldi t0, 0xF010
-  mov t1, 1
-  stw t1, [t0]
-
-  ldi t0, 0xF012
-wait_for_sd_2:
-  ldw t1, [t0]
-  brc t1, wait_for_sd_2
-
-  ldi t0, 0xF000
-  ldi t1, 0b1001
-  stw t1, [t0]
-
-
-  ldi t0, 0xE800
-  ldi t1, 0x1A12
-  stw t1, [t0]
-
-  ldi t0, 0xF014
-  ldi t1, 1
-  stw t1, [t0]
-
-  ldi t0, 0xF012
-wait_for_sd_3:
-  ldw t1, [t0]
-  brc t1, wait_for_sd_3
-
-
-  mov s0, 0
-sd_card_test_loop:
-  ldi t0, 0xE800
-  add t0, s0
-  ldb t1, [t0]
-  ldi t0, text_buffer
-  add t0, s0
-  adi t0, 93
-  stb t1, [t0]
-  add s0, 1
-  mov t0, s0
-  dfi t0, 64
-  brc t0, sd_card_test_loop
-
-  ldi t0, 0xE800
-  ldb t1, [t0]
-  ldi t0, 0xF000
-  stw t1, [t0]
-
-
   ldi sp, 0xC000
 
-  mov s0, 0
+  jsr ra, buzzer_test
+  ; jsr ra, buttons_test
+
+  ; jsr ra, sd_card_test
+
+
 loop:
-; Draw line cursor (0x04):
-  ldi t0, text_buffer
-  add t0, s0
-  adi t0, 32
-  ldi t1, 0x04
-  stb t1, [t0]
-
-; Set cursor color to blue (0x03):
-  ldi t0, text_color_buffer
-  add t0, s0
-  adi t0, 32
-  mov t1, 0b11
-  stb t1, [t0]
-
-  ldi t0, 0xF00A
-  ldw s1, [t0]
-  mov t0, s1
-  equ t0, 0
-  brc t0, skip
-
-  ldi t0, 0xF004
-  ldi t1, 300
-  stw t1, [t0]
-
-wait_for_key_release:
-  ldi t0, 0xF00A
-  ldw t1, [t0]
-  brc t1, wait_for_key_release
-
-; Check if caps lock was pressed
-  mov t0, s1
-  dif t0, 2
-  brc t0, caps_lock_not_pressed
-  ldi t0, caps_lock_on
-  ldb t1, [t0]
-  xor t1, 1
-  stb t1, [t0]
-  jmp skip
-
-caps_lock_not_pressed:
-
-; Check if backspace was pressed
-  mov t0, s1
-  dif t0, 3
-  brc t0, backspace_not_pressed
-  ldi t0, text_buffer
-  add t0, s0
-  adi t0, 32
-  mov t1, 0
-  stb t1, [t0]
-  sub s0, 1
-  ldi t0, 0x3F
-  and s0, t0
-  jmp skip:
-
-backspace_not_pressed:
-
-; Check if 300ms passed
-  ldi t0, 0xF004
-  ldw t1, [t0]
-
-; Draw text character
-  ldi t0, text_buffer
-  add t0, s0
-  adi t0, 32
-; Check for alt characters
-  equ t1, 0
-  shl t1, 5
-  add s1, t1
-; Check for caps lock
-  ldi t2, caps_lock_on
-  ldb t2, [t2]
-  shl t2, 6
-  add s1, t2
-; Store the character in a text buffer
-  stb s1, [t0]
-
-; Set new character color to black (0x00):
-  ldi t0, text_color_buffer
-  add t0, s0
-  adi t0, 32
-  mov t1, 0
-  stb t1, [t0]
-
-  add s0, 1
-  ldi t0, 0x3F
-  and s0, t0
-
-skip:
+  jsr ra, update_cursor_pos
 
   ldi a0, 0b101010
   jsr ra, clear_screen
@@ -231,16 +57,8 @@ skip:
   ldi a1, title_bar_str
   jsr ra, draw_title_bar
 
-  ldi a0, 2056 ; 128*16 + 8
-  ldi a1, 112 ; 128-16
-  ldi a2, 48 ; 8*6
-  ldi a3, 0b111111
-  jsr ra, draw_rect
-
-  mov a3, 0
-  jsr ra, draw_rect_outline
-
   jsr ra, draw_caps_lock
+  jsr ra, draw_app_menu
 
   jsr ra, draw_text_buffer
   jsr ra, refresh_screen
@@ -257,7 +75,7 @@ draw_pixel:
   mov t0, a1
   shl t0, 7
   add t0, a0
-  adi t0, 0xC000
+  adi t0, FRAMEBUFFER
   stb a2, [t0]
   ret ra
 ; }
@@ -378,7 +196,7 @@ clear_screen:
 clear_screen_loop:
   sub t0, 1
   mov t1, t0
-  adi t1, 0xC000
+  adi t1, FRAMEBUFFER
   stb a0, [t1]
   brc t0, clear_screen_loop
   ret ra
@@ -402,7 +220,7 @@ draw_title_bar_loop:
   ldi s0, 1024
 draw_title_bar_back_loop:
   sub s0, 1
-  ldi t0, 0xC000
+  ldi t0, FRAMEBUFFER
   add t0, s0
   stb a0, [t0]
   brc s0, draw_title_bar_back_loop
@@ -445,7 +263,7 @@ draw_rect_loop_x:
   shl t0, 7
   add t0, a0
   add t0, t2
-  adi t0, 0xC000
+  adi t0, FRAMEBUFFER
   stb a3, [t0]
 
   brc t2, draw_rect_loop_x
@@ -459,45 +277,75 @@ draw_rect_loop_x:
 draw_rect_outline:
   shl a2, 7
 
+  mov t0, a0
+  shr t0, 7
+  equ t0, 0
+  brc t0, skip_top_rect_outline
+
   mov t1, a1
 draw_top_rect_outline_loop:
   sub t1, 1
-  ldi t0, 0xC000
+  ldi t0, FRAMEBUFFER
   add t0, t1
   add t0, a0
   adi t0, -128
   stb a3, [t0]
   brc t1, draw_top_rect_outline_loop
 
+  mov t0, a0
+  shr t0, 7
+  eqi t0, 79
+  brc t0, skip_bottom_rect_outline
+
+skip_top_rect_outline:
+
   mov t1, a1
 draw_bottom_rect_outline_loop:
   sub t1, 1
-  ldi t0, 0xC000
+  ldi t0, FRAMEBUFFER
   add t0, t1
   add t0, a0
   add t0, a2
   stb a3, [t0]
   brc t1, draw_bottom_rect_outline_loop
 
+skip_bottom_rect_outline:
+
+  mov t0, a0
+  ldi t1, 0xEF
+  and t0, t1
+  equ t0, 0
+  brc t0, skip_left_rect_outline
+
   mov t1, a2
 draw_left_rect_outline_loop:
   adi t1, -128
-  ldi t0, 0xC000
+  ldi t0, FRAMEBUFFER
   add t0, t1
   add t0, a0
   sub t0, 1
   stb a3, [t0]
   brc t1, draw_left_rect_outline_loop
 
+skip_left_rect_outline:
+
+  mov t0, a0
+  ldi t1, 0xEF
+  and t0, t1
+  eqi t0, 127
+  brc t0, skip_right_rect_outline
+
   mov t1, a2
 draw_right_rect_outline_loop:
   adi t1, -128
-  ldi t0, 0xC000
+  ldi t0, FRAMEBUFFER
   add t0, t1
   add t0, a0
   add t0, a1
   stb a3, [t0]
   brc t1, draw_right_rect_outline_loop
+
+skip_right_rect_outline
 
   shr a2, 7
 
@@ -516,26 +364,8 @@ draw_caps_lock:
   ldi a3, 0b111111
   jsr ra, draw_rect
 
-  ldi t2, 24 ; 8*3
-  mov t1, 0
-draw_caps_lock_top_outline_loop:
-  sub t2, 1
-  ldi t0, 9088 ; 128*9*8-128
-  adi t0, 0xC000
-  add t0, t2
-  stb t1, [t0]
-  brc t2, draw_caps_lock_top_outline_loop
-
-  ldi t2, 1024 ; 8*128
-  mov t1, 0
-draw_caps_lock_right_outline_loop:
-  adi t2, -128
-  ldi t0, 9240 ; 128*9*8+24
-  adi t0, 0xC000
-  add t0, t2
-  stb t1, [t0]
-  brc t2, draw_caps_lock_right_outline_loop
-
+  mov a3, 0
+  jsr ra, draw_rect_outline
 
   ldi t1, caps_lock_on_str
   ldi t0, caps_lock_on
@@ -565,6 +395,197 @@ caps_lock_on_skip:
 ; }
 
 
+; func draw_app_menu () {
+draw_app_menu:
+  sub sp, 2
+  stw ra, [sp]
+
+  ldi a0, 2056 ; 128*16 + 8
+  ldi a1, 112 ; 128-16
+  ldi a2, 48 ; 8*6
+  ldi a3, 0b111111
+  jsr ra, draw_rect
+
+  mov a3, 0
+  jsr ra, draw_rect_outline
+
+  ldi a0, 2056 ; 128*16 + 8
+  ldi t0, cursor_pos
+  ldb t0, [t0]
+  shl t0, 10
+  add a0, t0
+  ldi a1, 112 ; 128-16
+  ldi a2, 8
+  mov a3, 0b11
+  jsr ra, draw_rect
+
+  mov t2, 6
+app_menu_text_color_loop_y:
+  sub t2, 1
+  mov t3, 14
+app_menu_text_color_loop_x:
+  sub t3, 1
+  mov t0, t2
+  shl t0, 4
+  add t0, t3
+  adi t0, 33
+  adi t0, text_color_buffer
+  mov t1, 0
+  stb t1, [t0]
+  brc t3, app_menu_text_color_loop_x
+  brc t2, app_menu_text_color_loop_y
+
+  ldi t0, cursor_pos
+  ldb t2, [t0]
+  mov t3, 14
+app_menu_cursor_text_color_loop:
+  sub t3, 1
+  mov t0, t2
+  shl t0, 4
+  add t0, t3
+  adi t0, 33
+  adi t0, text_color_buffer
+  ldi t1, 0b111111
+  stb t1, [t0]
+  brc t3, app_menu_cursor_text_color_loop
+
+  jsr ra, wait_for_sd
+
+  ldi t0, 0xF016
+  mov t1, 0
+  stw t1, [t0]
+
+  ldi t0, 0xF010
+  mov t1, 1
+  stw t1, [t0]
+
+  jsr ra, wait_for_sd
+
+  ldi t2, 0
+app_menu_text_loop_y:
+  ldi t3, 0
+app_menu_text_loop_x:
+  mov t0, t2
+  ldi t1, app_menu_pos
+  ldw t1, [t1]
+  add t0, t1
+  shl t0, 5
+  adi t0, SD_CARD_BLOCK
+  add t0, t3
+
+  ldb t1, [t0]
+
+  mov t0, t2
+  shl t0, 4
+  adi t0, text_buffer
+  add t0, t3
+  adi t0, 34
+  
+  stb t1, [t0]
+
+  add t3, 1
+  mov t0, t3
+  dif t0, 12
+  brc t0, app_menu_text_loop_x
+  add t2, 1
+  mov t0, t2
+  dif t0, 6
+  brc t0, app_menu_text_loop_y
+
+  ldw ra, [sp]
+  add sp, 2
+
+  ret ra
+; }
+
+
+; func update_cursor_pos () {
+update_cursor_pos:
+
+; Check button_u
+  ldi t0, BUTTONS
+  ldw t0, [t0]
+  and t0, 0b01
+  equ t0, 0
+  brc t0, dont_move_cursor_up
+
+  ldi t0, cursor_pos
+  ldb t1, [t0]
+  dif t1, 0
+  brc t1, move_cursor_up
+
+  ldi t0, app_menu_pos
+  ldw t1, [t0]
+  sub t1, 1
+  stw t1, [t0]
+
+  jmp wait_for_cursor_up_release
+
+move_cursor_up:
+
+  ldi t0, cursor_pos
+  ldb t1, [t0]
+  sub t1, 1
+  stb t1, [t0]
+
+wait_for_cursor_up_release:
+  ldi t0, BUTTONS
+  ldw t0, [t0]
+  and t0, 0b01
+  brc t0, wait_for_cursor_up_release
+
+  jmp dont_move_cursor_down
+
+dont_move_cursor_up:
+
+; Check button_d
+  ldi t0, BUTTONS
+  ldw t0, [t0]
+  and t0, 0b10
+  equ t0, 0
+  brc t0, dont_move_cursor_down
+
+  ldi t0, cursor_pos
+  ldb t1, [t0]
+  dif t1, 5
+  brc t1, move_cursor_down
+
+  ldi t0, app_menu_pos
+  ldw t1, [t0]
+  add t1, 1
+  stw t1, [t0]
+
+  jmp wait_for_cursor_down_release
+
+move_cursor_down:
+
+  ldi t0, cursor_pos
+  ldb t1, [t0]
+  add t1, 1
+  stb t1, [t0]
+
+wait_for_cursor_down_release:
+  ldi t0, BUTTONS
+  ldw t0, [t0]
+  and t0, 0b10
+  brc t0, wait_for_cursor_down_release
+
+dont_move_cursor_down:
+
+  ret ra
+; }
+
+
+; func wait_for_sd () {
+wait_for_sd:
+  ldi t0, 0xF012
+app_menu_wait_for_sd_1:
+  ldw t1, [t0]
+  brc t1, app_menu_wait_for_sd_1
+  ret ra
+; }
+
+
 ; func refresh_screen () {
 refresh_screen:
   ldi t1, 0xF008 ; GPU busy
@@ -577,6 +598,201 @@ wait_for_gpu:
   mov t0, 1
   stw t0, [t1]
 
+  ret ra
+; }
+
+
+; func buzzer_test() {
+buzzer_test:
+  ldi t2, 2000
+  ldi t0, 0xF00C
+  stw t2, [t0]
+
+  ldi t0, 0xF004
+  ldi t1, 500 ; 0.5s
+  stw t1, [t0]
+buzzer_test_wait:
+  ldw t1, [t0]
+  brc t1, buzzer_test_wait
+
+  ldi t2, 0
+  ldi t0, 0xF00C
+  stw t2, [t0]
+
+  ret ra
+; }
+
+
+; func buttons_test() {
+buttons_test:
+  ldi t0, 0xF004
+  ldi t1, 1000 ; 1s
+  stw t1, [t0]
+
+buttons_loop:
+  ldi t0, BUTTONS
+  ldw t1, [t0]
+  shr t1, 2
+  ldi t0, LEDS
+  stw t1, [t0]
+  ldi t0, 0xF004
+  ldw t1, [t0]
+  brc t1, buttons_loop
+
+  ret ra
+; }
+
+
+; func sd_card_test() {
+sd_card_test:
+  sub sp, 2
+  stw ra, [sp]
+
+  ldi t0, 0xF016
+  ldi t1, 0
+  stw t1, [t0]
+
+  jsr ra, wait_for_sd
+
+  ldi t0, LEDS
+  ldi t1, 0b1010
+  stw t1, [t0]
+
+  ldi t0, 0xF010
+  mov t1, 1
+  stw t1, [t0]
+
+  jsr ra, wait_for_sd
+
+  ldi t0, LEDS
+  ldi t1, 0b1001
+  stw t1, [t0]
+
+  ldi t0, SD_CARD_BLOCK
+  ldi t1, 0x1A12
+  stw t1, [t0]
+
+  ldi t0, 0xF014
+  ldi t1, 1
+  stw t1, [t0]
+
+  jsr ra, wait_for_sd
+
+  mov t2, 0
+sd_card_test_loop:
+  ldi t0, SD_CARD_BLOCK
+  add t0, t2
+  ldb t1, [t0]
+  ldi t0, text_buffer
+  add t0, t2
+  adi t0, 93
+  stb t1, [t0]
+  add t2, 1
+  mov t0, t2
+  dfi t0, 64
+  brc t0, sd_card_test_loop
+
+  ldw ra, [sp]
+  add sp, 2
+
+  ret ra
+; }
+
+
+; func handle_keyboard () {
+handle_keyboard:
+
+; WARNING - not working function
+
+; Draw line cursor (0x04):
+  ldi t0, text_buffer
+  add t0, s0
+  adi t0, 32
+  ldi t1, 0x04
+  stb t1, [t0]
+
+; Set cursor color to blue (0x03):
+  ldi t0, text_color_buffer
+  add t0, s0
+  adi t0, 32
+  mov t1, 0b11
+  stb t1, [t0]
+
+  ldi t0, KEYBOARD
+  ldw s1, [t0]
+  mov t0, s1
+  equ t0, 0
+  brc t0, keyboard_skip
+
+  ldi t0, 0xF004
+  ldi t1, 300
+  stw t1, [t0]
+
+wait_for_key_release:
+  ldi t0, KEYBOARD
+  ldw t1, [t0]
+  brc t1, wait_for_key_release
+
+; Check if caps lock was pressed
+  mov t0, s1
+  dif t0, 2
+  brc t0, caps_lock_not_pressed
+  ldi t0, caps_lock_on
+  ldb t1, [t0]
+  xor t1, 1
+  stb t1, [t0]
+  jmp keyboard_skip
+
+caps_lock_not_pressed:
+
+; Check if backspace was pressed
+  mov t0, s1
+  dif t0, 3
+  brc t0, backspace_not_pressed
+  ldi t0, text_buffer
+  add t0, s0
+  adi t0, 32
+  mov t1, 0
+  stb t1, [t0]
+  sub s0, 1
+  ldi t0, 0x3F
+  and s0, t0
+  jmp keyboard_skip:
+
+backspace_not_pressed:
+
+; Check if 300ms passed
+  ldi t0, 0xF004
+  ldw t1, [t0]
+
+; Draw text character
+  ldi t0, text_buffer
+  add t0, s0
+  adi t0, 32
+; Check for alt characters
+  equ t1, 0
+  shl t1, 5
+  add s1, t1
+; Check for caps lock
+  ldi t2, caps_lock_on
+  ldb t2, [t2]
+  shl t2, 6
+  add s1, t2
+; Store the character in a text buffer
+  stb s1, [t0]
+
+; Set new character color to black (0x00):
+  ldi t0, text_color_buffer
+  add t0, s0
+  adi t0, 32
+  mov t1, 0
+  stb t1, [t0]
+
+  add s0, 1
+  ldi t0, 0x3F
+  and s0, t0
+
+keyboard_skip:
   ret ra
 ; }
 
@@ -944,14 +1160,14 @@ char_table:
   byte 0b00000000
   byte 0b00000000
 
-; block cursor:
+; ... character:
   byte 0b00000000
   byte 0b00000000
   byte 0b00000000
   byte 0b00000000
   byte 0b00000000
   byte 0b00000000
-  byte 0b00000000
+  byte 0b01010100
   byte 0b00000000
 
 ; _ character:
@@ -1584,14 +1800,14 @@ char_table:
   byte 0b00000000
   byte 0b00000000
 
-; block cursor:
+; ... character:
   byte 0b00000000
   byte 0b00000000
   byte 0b00000000
   byte 0b00000000
   byte 0b00000000
   byte 0b00000000
-  byte 0b00000000
+  byte 0b01010100
   byte 0b00000000
 
 ; _ character:
