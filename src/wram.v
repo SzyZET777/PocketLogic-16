@@ -38,7 +38,8 @@ end
 
 initial begin
   ram_data_rd <= 16'h0000;
-  $readmemh("asm_out.txt", memory_0);
+  $readmemh("asm_out_0.txt", memory_0);
+  $readmemh("asm_out_1.txt", memory_1);
 end
 
 endmodule

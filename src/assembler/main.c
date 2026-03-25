@@ -54,7 +54,7 @@ char* mnemonics_jcu[] = {"ldi","adi","eqi","dfi","jmp","brc","jsr","ret","\0"};
 char* registers[] = {"a0","a1","a2","a3","t0","t1","t2","t3",
                      "s0","s1","s2","s3","bp","sp","rv","ra","\0"};
 
-char* directives[] = {"byte", "word", "text", "reserve", "define", "\0"};
+char* directives[] = {"byte", "word", "text", "reserve", "define", "sector", "\0"};
 
 char* pl16_to_ascii = {"@@@@@ qwertyuiopasdfghjklzxcvbnm@@@@@_1234567890<>=+-*/()!?\":;.,@@@@@ QWERTYUIOPASDFGHJKLZXCVBNM@@@@@_1234567890<>=+-*/()!?\":;.,\0"};
 
@@ -63,7 +63,8 @@ char* pl16_to_ascii = {"@@@@@ qwertyuiopasdfghjklzxcvbnm@@@@@_1234567890<>=+-*/(
 // Global variables
 FILE* source_code;
 FILE* tmp_file;
-FILE* output_file;
+FILE* output_file_0;
+FILE* output_file_1;
 
 bool negate_next_number = false;
 bool tolower_next_chars = true;
@@ -77,7 +78,7 @@ struct symbol sym_tab[65536];
 
 // Functions
 void open_files_for_passes(int argc, char* argv[]) {
-  if (argc != 3) {
+  if (argc != 4) {
     printf("First argument should be the source code\n");
     printf("Second argument should be an output file\n");
     exit(-1);
@@ -85,10 +86,12 @@ void open_files_for_passes(int argc, char* argv[]) {
 
   source_code = fopen(argv[1], "r");
   tmp_file = fopen("asm_tmp.txt", "w");
-  output_file = fopen(argv[2], "w");
+  output_file_0 = fopen(argv[2], "w");
+  output_file_1 = fopen(argv[3], "w");
 
   fprintf(tmp_file,"");
-  fprintf(output_file,"");
+  fprintf(output_file_0,"");
+  fprintf(output_file_1,"");
 
   fclose(tmp_file);
   tmp_file = fopen("asm_tmp.txt", "a");
@@ -102,7 +105,8 @@ void open_files_for_passes(int argc, char* argv[]) {
 
 void open_files_for_output(int argc, char* argv[]) {
   tmp_file = fopen("asm_tmp.txt", "r");
-  output_file = fopen(argv[2], "a");
+  output_file_0 = fopen(argv[2], "a");
+  output_file_1 = fopen(argv[3], "a");
 }
 
 
@@ -110,7 +114,8 @@ void open_files_for_output(int argc, char* argv[]) {
 void close_files() {
   fclose(source_code);
   fclose(tmp_file);
-  fclose(output_file);
+  fclose(output_file_0);
+  fclose(output_file_1);
 }
 
 
@@ -375,6 +380,23 @@ void handle_directives(int* adr) {
       exit(-1);
     }
 
+  } else if (strcmp(peek().string_value, "sector") == 0) {
+    if (!next()) return;
+    if (peek().value < *adr) {
+      printf("Wrong sector address!\n");
+      exit(-1);
+    }
+
+    int adr_before_sector_skip = *adr;
+    while (*adr != peek().value) {
+      *adr += 1;
+      if (pass_num == 2) {
+        fprintf(tmp_file, "00");
+      }
+    }
+
+    printf("New sector started, %d addresses skipped\n", (*adr)-adr_before_sector_skip);
+
   } else {
     printf("Unknown directive found!\n");
     exit(-1);
@@ -555,6 +577,7 @@ void add_newspaces_to_output(int mem_width) {
   }
   mem_width /= 4; // Bit width to hex width
   char* line = (char*)malloc(mem_width+1);
+  int line_of_memory = 0;
   while (fgets(line, mem_width+1, tmp_file) != NULL) {
     for (int i = 0; i < mem_width; i++) {
       if (line[i] == '\0') {
@@ -565,7 +588,12 @@ void add_newspaces_to_output(int mem_width) {
         break;
       }
     }
-    fprintf(output_file, "%s\n", line);
+    if (line_of_memory < 8192) {
+      fprintf(output_file_0, "%s\n", line);
+    } else { 
+      fprintf(output_file_1, "%s\n", line);
+    }
+    line_of_memory++;
   }
   free(line);
 }

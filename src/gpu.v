@@ -27,7 +27,6 @@ initial LCD_CS <= 1'b0;
 initial gpu_busy <= 1'b1;
 
 always @(posedge clk) LCD_CLK = ~LCD_CLK;
-// always @(*) LCD_CLK = clk;
 
 wire [15:0] ram_data_rd_1, ram_data_rd_2;
 
@@ -62,19 +61,21 @@ always @(*) begin
 end
 
 always @(*) begin
-  if (state == rst_snd || state == rst_del) begin
+  if (state == rst1_snd || state == rst1_del || state == rst2_snd || state == rst2_del) begin
     LCD_DIN = rst_seq[idx_cnt][bit_cnt];
-  end else if (state == idle) begin
+  end else if (state == rst_idle || state == idle) begin
     LCD_DIN = ram_wr[bit_cnt];
+  end else if (state == rst_send) begin
+    LCD_DIN = 1'b0;
   end else begin
     LCD_DIN = ram_data_rd[bit_cnt>>1];
   end
 end
 
 always @(*) begin
-  if (state == rst_snd || state == rst_del) begin 
+  if (state == rst1_snd || state == rst1_del || state == rst2_snd || state == rst2_del) begin
     LCD_DC = dc[idx_cnt];
-  end else if (state == idle) begin
+  end else if (state == rst_idle || state == idle) begin
     LCD_DC = 1'b0;
   end else begin
     LCD_DC = 1'b1;
@@ -83,10 +84,14 @@ end
 
 
 // GPU states
-localparam rst_snd = 2'b00;
-localparam rst_del = 2'b01;
-localparam idle = 2'b10;
-localparam send = 2'b11;
+localparam rst1_snd = 3'b000;
+localparam rst1_del = 3'b001;
+localparam rst_idle = 3'b010;
+localparam rst_send = 3'b011;
+localparam rst2_snd = 3'b100;
+localparam rst2_del = 3'b101;
+localparam idle = 3'b110;
+localparam send = 3'b111;
 
 // Clock Frequency
 localparam clk_freq = 32'd27000000; // Normal (27MHz)
@@ -94,16 +99,16 @@ localparam clk_freq = 32'd27000000; // Normal (27MHz)
 localparam cycles_in_ms = clk_freq / 32'd1000;
 
 // Resolution
-localparam resolution = 16'd128 * 16'd80;
+localparam resolution = 32'd128 * 32'd80;
 
 // Frame Buffer Numbers
 localparam buffer_1 = 1'b0;
 localparam buffer_2 = 1'b1;
 
 
-reg [7:0]  rst_seq [18:0];
-reg        dc      [18:0];
-reg [31:0] delay   [18:0];
+reg [7:0]  rst_seq [32:0];
+reg        dc      [32:0];
+reg [31:0] delay   [32:0];
 
 initial begin
   rst_seq[0]  = 8'b00000001; dc[0]  = 1'b0; delay[0]  = cycles_in_ms * 32'd150; // SWRESET
@@ -112,19 +117,34 @@ initial begin
   rst_seq[3]  = 8'b01010011; dc[3]  = 1'b1; delay[3]  = cycles_in_ms * 32'd010; // COLMOD_PARAM
   rst_seq[4]  = 8'b00110110; dc[4]  = 1'b0; delay[4]  = cycles_in_ms * 32'd000; // MADCTL
   rst_seq[5]  = 8'b10100000; dc[5]  = 1'b1; delay[5]  = cycles_in_ms * 32'd000; // MADCTL_PARAM
-  rst_seq[6]  = 8'b00101010; dc[6]  = 1'b0; delay[6]  = cycles_in_ms * 32'd000; // CASET
-  rst_seq[7]  = 8'b00000000; dc[7]  = 1'b1; delay[7]  = cycles_in_ms * 32'd000; // CASET_PARAM_1
-  rst_seq[8]  = 8'b00100000; dc[8]  = 1'b1; delay[8]  = cycles_in_ms * 32'd000; // CASET_PARAM_2
-  rst_seq[9]  = 8'b00000001; dc[9]  = 1'b1; delay[9]  = cycles_in_ms * 32'd000; // CASET_PARAM_3
-  rst_seq[10] = 8'b00011111; dc[10] = 1'b1; delay[10] = cycles_in_ms * 32'd000; // CASET_PARAM_4
+  rst_seq[6]  = 8'b00101010; dc[6] = 1'b0; delay[6] = cycles_in_ms * 32'd040; // CASET
+  rst_seq[7]  = 8'b00000000; dc[7] = 1'b1; delay[7] = cycles_in_ms * 32'd000; // CASET_PARAM_1
+  rst_seq[8]  = 8'b00000000; dc[8] = 1'b1; delay[8] = cycles_in_ms * 32'd000; // CASET_PARAM_2
+  rst_seq[9]  = 8'b00000001; dc[9] = 1'b1; delay[9] = cycles_in_ms * 32'd000; // CASET_PARAM_3
+  rst_seq[10] = 8'b11111111; dc[10] = 1'b1; delay[10] = cycles_in_ms * 32'd000; // CASET_PARAM_4
   rst_seq[11] = 8'b00101011; dc[11] = 1'b0; delay[11] = cycles_in_ms * 32'd000; // RASET
   rst_seq[12] = 8'b00000000; dc[12] = 1'b1; delay[12] = cycles_in_ms * 32'd000; // RASET_PARAM_1
-  rst_seq[13] = 8'b00101000; dc[13] = 1'b1; delay[13] = cycles_in_ms * 32'd000; // RASET_PARAM_2
-  rst_seq[14] = 8'b00000000; dc[14] = 1'b1; delay[14] = cycles_in_ms * 32'd000; // RASET_PARAM_3
-  rst_seq[15] = 8'b11000111; dc[15] = 1'b1; delay[15] = cycles_in_ms * 32'd000; // RASET_PARAM_4
+  rst_seq[13] = 8'b00000000; dc[13] = 1'b1; delay[13] = cycles_in_ms * 32'd000; // RASET_PARAM_2
+  rst_seq[13] = 8'b00000001; dc[14] = 1'b1; delay[14] = cycles_in_ms * 32'd000; // RASET_PARAM_3
+  rst_seq[15] = 8'b11111111; dc[15] = 1'b1; delay[15] = cycles_in_ms * 32'd000; // RASET_PARAM_4
   rst_seq[16] = 8'b00100001; dc[16] = 1'b0; delay[16] = cycles_in_ms * 32'd010; // INVON
   rst_seq[17] = 8'b00010011; dc[17] = 1'b0; delay[17] = cycles_in_ms * 32'd010; // NORON
   rst_seq[18] = 8'b00101001; dc[18] = 1'b0; delay[18] = cycles_in_ms * 32'd020; // DISPON
+
+  rst_seq[19] = 8'b00101010; dc[19] = 1'b0; delay[19] = cycles_in_ms * 32'd020; // CASET
+  rst_seq[20] = 8'b00000000; dc[20] = 1'b1; delay[20] = cycles_in_ms * 32'd000; // CASET_PARAM_1
+  rst_seq[21] = 8'b00100000; dc[21] = 1'b1; delay[21] = cycles_in_ms * 32'd000; // CASET_PARAM_2
+  rst_seq[22] = 8'b00000001; dc[22] = 1'b1; delay[22] = cycles_in_ms * 32'd000; // CASET_PARAM_3
+  rst_seq[23] = 8'b00011111; dc[23] = 1'b1; delay[23] = cycles_in_ms * 32'd000; // CASET_PARAM_4
+  rst_seq[24] = 8'b00101011; dc[24] = 1'b0; delay[24] = cycles_in_ms * 32'd000; // RASET
+  rst_seq[25] = 8'b00000000; dc[25] = 1'b1; delay[25] = cycles_in_ms * 32'd000; // RASET_PARAM_1
+  rst_seq[26] = 8'b00101000; dc[26] = 1'b1; delay[26] = cycles_in_ms * 32'd000; // RASET_PARAM_2
+  rst_seq[27] = 8'b00000001; dc[27] = 1'b1; delay[27] = cycles_in_ms * 32'd000; // RASET_PARAM_3
+  rst_seq[28] = 8'b11000111; dc[28] = 1'b1; delay[28] = cycles_in_ms * 32'd000; // RASET_PARAM_4
+  rst_seq[29] = 8'b00100001; dc[29] = 1'b0; delay[29] = cycles_in_ms * 32'd010; // INVON
+  rst_seq[30] = 8'b00010011; dc[30] = 1'b0; delay[30] = cycles_in_ms * 32'd010; // NORON
+  rst_seq[31] = 8'b00101001; dc[31] = 1'b0; delay[31] = cycles_in_ms * 32'd020; // DISPON
+  rst_seq[32] = 8'b00000000; dc[32] = 1'b0; delay[32] = cycles_in_ms * 32'd020; // NOP
 end
 
 
@@ -155,41 +175,97 @@ vram vram_2 (
 
 
 // Registers
-reg [1:0] state = rst_snd;
+reg [2:0] state = rst1_snd;
 reg idle_wait = 1'b0;
 
 reg [15:0] bit_cnt = 16'd7;
-reg [15:0] idx_cnt = 16'd0;
-reg [31:0] del_cnt = 16'd0;
+reg [31:0] idx_cnt = 32'd0;
+reg [31:0] del_cnt = 32'd0;
 
-localparam ram_wr = 8'b00101100; // RAM_WR LCD Command
+localparam ram_wr = 8'b00101100; // RAMWR LCD Command
 
 // State Machine
 always @(posedge LCD_CLK) begin
-  if (state == rst_del && idx_cnt == 16'd19 && del_cnt == 32'd0) begin
+  if (state == rst1_del && idx_cnt == 32'd19 && del_cnt == 32'd0) begin
+    LCD_CS <= 1'b1;
+    idx_cnt <= 32'd0;
+    bit_cnt <= 16'd7;
+    idle_wait <= 1'b1;
+    state <= rst_idle;
+
+  end else if (state == rst2_del && idx_cnt == 32'd32 && del_cnt == 32'd0) begin
     LCD_CS <= 1'b1;
     bit_cnt <= 16'd7;
     gpu_busy <= 1'b0;
     idle_wait <= 1'b1;
     state <= idle;
 
-  end else if (state == rst_snd) begin
+  end else if (state == rst1_snd) begin
     if (bit_cnt == 16'd0) begin
       bit_cnt <= 16'd7;
-      idx_cnt <= idx_cnt + 16'd1;
+      idx_cnt <= idx_cnt + 32'd1;
       if (delay[idx_cnt] != 16'd0) begin
         LCD_CS <= 1'b1;
         del_cnt <= delay[idx_cnt];
-        state <= rst_del; 
+        state <= rst1_del; 
       end
     end else begin
       bit_cnt <= bit_cnt - 16'd1;
     end
 
-  end else if (state == rst_del) begin
+  end else if (state == rst1_del) begin
     if (del_cnt == 32'd0) begin
       LCD_CS <= 1'b0;
-      state <= rst_snd;
+      state <= rst1_snd;
+    end else begin
+      del_cnt <= del_cnt - 32'd1;
+    end
+
+  end else if (state == rst_idle) begin
+    if (idle_wait) begin
+      idle_wait <= 1'b0;
+      LCD_CS <= 1'b0;
+    end else begin
+      if (bit_cnt == 16'd0) begin
+        bit_cnt <= 16'd11;
+        idx_cnt <= 32'd0;
+        state <= rst_send;
+      end else begin
+        bit_cnt <= bit_cnt - 16'd1;
+      end
+    end
+
+  end else if (state == rst_send) begin
+    if (bit_cnt == 16'd0) begin
+      bit_cnt <= 16'd11;
+      if (idx_cnt+32'd1 < 32'd262144) begin
+        idx_cnt <= idx_cnt + 32'd1;
+      end else begin
+        bit_cnt <= 16'd7;
+        idx_cnt <= 32'd19;
+        state <= rst2_snd;
+      end
+    end else begin
+      bit_cnt <= bit_cnt - 16'd1;
+    end
+
+  end else if (state == rst2_snd) begin
+    if (bit_cnt == 16'd0) begin
+      bit_cnt <= 16'd7;
+      idx_cnt <= idx_cnt + 32'd1;
+      if (delay[idx_cnt] != 16'd0) begin
+        LCD_CS <= 1'b1;
+        del_cnt <= delay[idx_cnt];
+        state <= rst2_del; 
+      end
+    end else begin
+      bit_cnt <= bit_cnt - 16'd1;
+    end
+
+  end else if (state == rst2_del) begin
+    if (del_cnt == 32'd0) begin
+      LCD_CS <= 1'b0;
+      state <= rst2_snd;
     end else begin
       del_cnt <= del_cnt - 32'd1;
     end
@@ -210,21 +286,22 @@ always @(posedge LCD_CLK) begin
         end
 
         bit_cnt <= 16'd11;
-        idx_cnt <= 16'd0;
+        idx_cnt <= 32'd0;
         state <= send;
       end else begin
         bit_cnt <= bit_cnt - 16'd1;
       end
     end
+
   end else if (state == send) begin
     if (bit_cnt == 16'd0) begin
       bit_cnt <= 16'd11;
-      if (idx_cnt+16'd1 < 4*resolution) begin
-        idx_cnt <= idx_cnt + 16'd1;
+      if (idx_cnt+32'd1 < 32'd4*resolution) begin
+        idx_cnt <= idx_cnt + 32'd1;
       end else begin
         LCD_CS <= 1'b1;
         bit_cnt <= 16'd7;
-        idx_cnt <= 16'd0;
+        idx_cnt <= 32'd0;
         gpu_busy <= 1'b0;
         idle_wait <= 1'b1;
         state <= idle;
@@ -234,6 +311,7 @@ always @(posedge LCD_CLK) begin
     end
 
   end
+
 end
 
 endmodule

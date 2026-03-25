@@ -67,11 +67,12 @@ localparam send_data_token = 8'h17;
 localparam send_data_packet = 8'h18;
 localparam send_data_packet_crc = 8'h19;
 localparam check_data_packet_response = 8'h1A;
+localparam wait_while_sd_busy = 8'h1B;
 
 
 // Clock Frequency
-localparam clk_div = 16'd108; // Divides clock by 108
-localparam clk_freq = 32'd27000000 / clk_div; // Normal (250kHz)
+reg [15:0] clk_div = 16'd108; // Divides clock by 108, later by 2
+localparam clk_freq = 32'd27000000 / 32'd108; // Normal (250kHz)
 localparam cycles_in_ms = clk_freq / 32'd1000;
 
 
@@ -113,7 +114,7 @@ localparam  app_cmd = 40'h7700000000;
 localparam init_cmd = 40'h6940000000;
 wire [39:0] read_cmd = {24'h510000, 16'h0800+sd_block_adr};
 wire [39:0] write_cmd = {24'h580000, 16'h0800+sd_block_adr};
-localparam data_token = 16'hFFFE;
+localparam data_token = 32'hFFFFFFFE;
 
 
 always @(*) begin
@@ -247,6 +248,7 @@ always @(posedge SD_CLK) begin
       end else begin
         sd_busy <= 1'b0;
         SD_CS <= 1'b1;
+        clk_div <= 16'd2;
         state <= idle;
       end
     end else begin
@@ -332,7 +334,7 @@ always @(posedge SD_CLK) begin
     end
   end else if (state == check_write_r1) begin
     if (bit_cnt == 16'd0) begin
-      bit_cnt <= 16'd15;
+      bit_cnt <= 16'd31;
       state <= send_data_token;
     end else begin
       r1_response[bit_cnt] <= SD_DO;
@@ -368,6 +370,13 @@ always @(posedge SD_CLK) begin
       bit_cnt <= bit_cnt - 16'd1;
     end
   end else if (state == check_data_packet_response) begin
+    if (bit_cnt == 16'd0) begin
+      bit_cnt <= 16'd7;
+      state <= wait_while_sd_busy;
+    end else begin
+      bit_cnt <= bit_cnt - 16'd1;
+    end
+  end else if (state == wait_while_sd_busy) begin
     if (bit_cnt == 16'd0) begin
       if (SD_DO == 1'b1) begin
         sd_busy <= 1'b0;
