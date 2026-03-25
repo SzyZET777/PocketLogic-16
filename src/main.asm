@@ -63,6 +63,7 @@ main:
   jsr ra, filter_files
 
 loop:
+  jsr ra, load_and_run_app
   jsr ra, update_cursor_pos
   jsr ra, update_caps_lock
 
@@ -75,8 +76,6 @@ loop:
 
   jsr ra, draw_caps_lock
   jsr ra, draw_app_menu
-
-  ; jsr ra, user_main
 
   jsr ra, draw_text_buffer
   jsr ra, refresh_screen
@@ -535,6 +534,30 @@ app_menu_text_loop_x:
   mov t0, t3
   dif t0, 12
   brc t0, app_menu_text_loop_x
+
+  mov t0, t2
+  ldi t1, app_menu_pos
+  ldw t1, [t1]
+  add t0, t1
+  shl t0, 5
+  adi t0, filtered_files_list
+  add t0, t3
+
+  ldb t1, [t0]
+  equ t1, 0
+  brc t1, app_menu_text_loop_skip
+
+  mov t0, t2
+  shl t0, 4
+  adi t0, text_buffer
+  add t0, t3
+  adi t0, 33
+
+  ldi t1, 0x24
+  stb t1, [t0]
+
+app_menu_text_loop_skip:
+
   add t2, 1
   mov t0, t2
   dif t0, 6
@@ -732,7 +755,7 @@ save_program_to_sd_adr_loop:
   add t0, a0
   shl t0, 9
   add t0, t3
-  adi t0, user_main
+  adi t0, user_start
   ldw t1, [t0]
 
   ldi t0, SD_CARD_BLOCK
@@ -753,6 +776,57 @@ save_program_to_sd_adr_loop:
   mov t0, t2
   dfi t0, 32
   brc t0, save_program_to_sd_block_loop
+
+  ldw ra, [sp]
+  add sp, 2
+  
+  ret ra
+; }
+
+
+; func load_program_from_sd (#file_index) {
+load_program_from_sd:
+  sub sp, 2
+  stw ra, [sp]
+
+  shl a0, 5
+
+  jsr ra, wait_for_sd
+
+  mov t2, 0
+load_program_from_sd_block_loop:
+  ldi t0, 0xF016
+  mov t1, a0
+  add t1, t2
+  stw t1, [t0]
+
+  ldi t0, 0xF010
+  mov t1, 1
+  stw t1, [t0]
+  jsr ra, wait_for_sd
+
+  mov t3, 0
+load_program_from_sd_adr_loop:
+  ldi t0, SD_CARD_BLOCK
+  add t0, t3
+  ldw t1, [t0]
+
+  mov t0, t2
+  add t0, a0
+  shl t0, 9
+  add t0, t3
+  adi t0, user_start
+  stw t1, [t0]
+
+  add t3, 2
+  mov t0, t3
+  dfi t0, 512
+  brc t0, load_program_from_sd_adr_loop
+
+  add t2, 1
+  mov t0, t2
+  dfi t0, 32
+  brc t0, load_program_from_sd_block_loop
 
   ldw ra, [sp]
   add sp, 2
@@ -856,6 +930,56 @@ filter_files_skip:
   add sp, 2
   ldw ra, [sp]
   add sp, 2
+
+  ret ra
+; }
+
+
+; func load_and_run_app () {
+load_and_run_app:
+  ldi t0, 0xF00E
+  ldw t0, [t0]
+  ldi t1, 0b10000
+  and t0, t1
+  equ t0, 0
+  brc t0, load_and_run_app_skip
+
+  sub sp, 2
+  stw ra, [sp]
+  sub sp, 2
+  stw s0, [sp]
+  sub sp, 2
+  stw s1, [sp]
+  sub sp, 2
+  stw s2, [sp]
+  sub sp, 2
+  stw s3, [sp]
+
+  ldi t0, app_menu_pos
+  ldw t0, [t0]
+  mov a0, t0 ; a0 = t0*6
+  add a0, t0
+  shl t0, 2
+  add a0, t0
+  ldi t0, cursor_pos
+  ldb t0, [t0]
+  add a0, t0
+  add a0, 1
+
+  jsr ra, load_program_from_sd
+  jsr ra, user_start
+
+  ldw s3, [sp]
+  add sp, 2
+  ldw s2, [sp]
+  ldw s1, [sp]
+  add sp, 2
+  ldw s0, [sp]
+  add sp, 2
+  ldw ra, [sp]
+  add sp, 2
+
+load_and_run_app_skip:
 
   ret ra
 ; }
@@ -2151,70 +2275,34 @@ char_table:
   sector 0x4000
 
 
-; func user_main () {
-user_main:
-  text "app:test_000"
+; func user_start () {
+user_start:
+  text "sys:files_list"
+  reserve 18
+  text "app:buzzer_test"
+  reserve 17
+  text "app:test_001"
   reserve 20
-  text "dat:test_001"
+  text "tmp:test_002"
   reserve 20
-  text "apk:test_002"
+  text "app:test_003"
   reserve 20
-  text "tmp:test_003"
+  text "app:test_005"
+  reserve 20
+  text "tmp:test_007"
   reserve 20
   text "app:test_004"
   reserve 20
-  text "png:test_005"
-  reserve 20
-  text "jpg:test_006"
-  reserve 20
-  text "app:test_007"
-  reserve 20
   text "app:test_008"
   reserve 20
-  text "dat:test_009"
+  text "tmp:test_009"
   reserve 20
-  text "apk:test_010"
+  text "app:test_011"
   reserve 20
-  text "tmp:test_011"
+  text "app:test_010"
   reserve 20
-  text "app:test_012"
+  text "tmp:test_012"
   reserve 20
-  text "png:test_013"
-  reserve 20
-  text "jpg:test_014"
-  reserve 20
-  text "apk:test_015"
-  reserve 20
-  text "app:test_016"
-  reserve 20
-  text "dat:test_017"
-  reserve 20
-  text "apk:test_018"
-  reserve 20
-  text "tmp:test_019"
-  reserve 20
-  text "app:test_020"
-  reserve 20
-  text "png:test_021"
-  reserve 20
-  text "jpg:test_022"
-  reserve 20
-  text "app:test_023"
-  reserve 20
-  text "app:test_024"
-  reserve 20
-  text "dat:test_025"
-  reserve 20
-  text "apk:test_026"
-  reserve 20
-  text "tmp:test_027"
-  reserve 20
-  text "app:test_028"
-  reserve 20
-  text "png:test_029"
-  reserve 20
-  text "jpg:test_030"
-  reserve 20
-  text "app:test_031"
+  text "app:test_013"
   reserve 20
 ; }
