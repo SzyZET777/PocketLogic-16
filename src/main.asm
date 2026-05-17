@@ -56,10 +56,12 @@ main:
 
   jsr ra, buzzer_test
 
-  mov a0, 0
+  mov a0, 2
   jsr ra, save_program_to_sd
 
-  ldi a0, file_type_str
+exit_from_an_app:
+  mov a0, 0
+  ldi a1, file_type_str
   jsr ra, filter_files
 
 loop:
@@ -69,13 +71,15 @@ loop:
 
   ldi a0, 0b101010
   jsr ra, clear_screen
+  jsr ra, clear_text_buffer
 
-  ldi a0, 0b000011
+  mov a0, 0b11
   ldi a1, title_bar_str
   jsr ra, draw_title_bar
 
   jsr ra, draw_caps_lock
-  jsr ra, draw_app_menu
+  mov a0, 0b11
+  jsr ra, draw_file_menu
 
   jsr ra, draw_text_buffer
   jsr ra, refresh_screen
@@ -220,6 +224,23 @@ clear_screen_loop:
 ; }
 
 
+; func clear_text_buffer () {
+clear_text_buffer:
+  ldi t0, 160
+  mov t2, 5
+clear_text_buffer_loop:
+  sub t0, 1
+  mov t1, t0
+  adi t1, text_buffer
+  stb t2, [t1]
+  mov t1, t0
+  adi t1, text_color_buffer
+  stb t2, [t1]
+  brc t0, clear_text_buffer_loop
+  ret ra
+; }
+
+
 ; func draw_title_bar (#col, *str) {
 draw_title_bar:
   sub sp, 2
@@ -286,6 +307,17 @@ draw_rect_loop_x:
   brc t2, draw_rect_loop_x
   brc t1, draw_rect_loop_y
 
+  ret ra
+; }
+
+
+; func reset_menu_pos () {
+reset_menu_pos:
+  mov t0, 0
+  ldi t1, cursor_pos
+  stb t0, [t1]
+  ldi t1, app_menu_pos
+  stw t0, [t1] 
   ret ra
 ; }
 
@@ -412,19 +444,15 @@ caps_lock_on_skip:
 ; }
 
 
-; func draw_app_menu () {
-draw_app_menu:
+; func draw_file_menu (#col) {
+draw_file_menu:
   sub sp, 2
   stw ra, [sp]
+  sub sp, 2
+  stw s0, [sp]
 
-  ldi a0, 2056 ; 128*16 + 8
-  ldi a1, 112 ; 128-16
-  ldi a2, 48 ; 8*6
-  ldi a3, 0b111111
-  jsr ra, draw_rect
-
-  mov a3, 0
-  jsr ra, draw_rect_outline
+  mov s0, a0
+  jsr ra, draw_standard_window
 
   ldi a0, 2056 ; 128*16 + 8
   ldi t0, cursor_pos
@@ -433,7 +461,7 @@ draw_app_menu:
   add a0, t0
   ldi a1, 112 ; 128-16
   ldi a2, 8
-  mov a3, 0b11
+  mov a3, s0
   jsr ra, draw_rect
 
   mov t2, 6
@@ -468,7 +496,7 @@ app_menu_cursor_text_color_loop:
 
   ldi t0, text_buffer
   adi t0, 46
-  mov t1, 0
+  mov t1, 5
   stb t1, [t0]
 
   ldi t0, app_menu_pos
@@ -485,7 +513,7 @@ app_menu_arrow_up_skip:
 
   ldi t0, text_buffer
   adi t0, 126
-  mov t1, 0
+  mov t1, 5
   stb t1, [t0]
 
   ldi t0, app_menu_pos
@@ -563,11 +591,34 @@ app_menu_text_loop_skip:
   dif t0, 6
   brc t0, app_menu_text_loop_y
 
+  ldw s0, [sp]
+  add sp, 2
   ldw ra, [sp]
   add sp, 2
 
   ret ra
 ; }
+
+
+; func draw_standard_window () {
+draw_standard_window:
+  sub sp, 2
+  stw ra, [sp]
+
+  ldi a0, 2056 ; 128*16 + 8
+  ldi a1, 112 ; 128-16
+  ldi a2, 48 ; 8*6
+  ldi a3, 0b111111
+  jsr ra, draw_rect
+
+  mov a3, 0
+  jsr ra, draw_rect_outline
+
+  ldw ra, [sp]
+  add sp, 2
+
+  ret ra
+}
 
 
 ; func update_cursor_pos () {
@@ -835,7 +886,7 @@ load_program_from_sd_adr_loop:
 ; }
 
 
-; func filter_files (*file_type_str) {
+; func filter_files (#skip_type_check, *file_type_str) {
 filter_files:
   sub sp, 2
   stw ra, [sp]
@@ -843,6 +894,8 @@ filter_files:
   stw s0, [sp]
   sub sp, 2
   stw s1, [sp]
+
+  jsr ra, reset_menu_pos
 
   ldi t0, filtered_files_list_size
   mov t1, 0
@@ -875,19 +928,34 @@ filter_files_block_loop:
 
   mov s1, 0
 filter_files_adr_loop:
+  brc a0, type_skip
   ldi t0, SD_CARD_BLOCK
   add t0, s1
   ldw t1, [t0]
-  ldw t2, [a0]
+  ldw t2, [a1]
   dif t1, t2
   brc t1, filter_files_skip
   add t0, 2
-  add a0, 2
+  add a1, 2
   ldw t1, [t0]
-  ldw t2, [a0]
-  sub a0, 2
+  ldw t2, [a1]
+  sub a1, 2
   dif t1, t2
   brc t1, filter_files_skip
+  jmp type_checked
+
+type_skip:
+  ldi t0, SD_CARD_BLOCK
+  add t0, s1
+  ldw t1, [t0]
+  equ t1, 0
+  brc t1, filter_files_skip
+  add t0, 2
+  ldw t1, [t0]
+  equ t1, 0
+  brc t1, filter_files_skip
+
+type_checked:
 
   mov t2, 0
 filter_files_copy_loop:
@@ -910,6 +978,8 @@ filter_files_copy_loop:
   ldb t1, [t0]
   add t1, 1
   stb t1, [t0]
+  eqi t1, 64
+  brc t1, files_list_full
 
   adi t3, 32
   
@@ -923,6 +993,8 @@ filter_files_skip:
   mov t0, s0
   dfi t0, 32
   brc t0, filter_files_block_loop
+
+files_list_full:
 
   ldw s1, [sp]
   add sp, 2
@@ -944,16 +1016,13 @@ load_and_run_app:
   equ t0, 0
   brc t0, load_and_run_app_skip
 
-  sub sp, 2
-  stw ra, [sp]
-  sub sp, 2
-  stw s0, [sp]
-  sub sp, 2
-  stw s1, [sp]
-  sub sp, 2
-  stw s2, [sp]
-  sub sp, 2
-  stw s3, [sp]
+load_and_run_app_wait: 
+  ldi t0, 0xF00E
+  ldw t0, [t0]
+  ldi t1, 0b10000
+  and t0, t1
+  dif t0, 0
+  brc t0, load_and_run_app_wait
 
   ldi t0, app_menu_pos
   ldw t0, [t0]
@@ -969,15 +1038,7 @@ load_and_run_app:
   jsr ra, load_program_from_sd
   jsr ra, user_start
 
-  ldw s3, [sp]
-  add sp, 2
-  ldw s2, [sp]
-  ldw s1, [sp]
-  add sp, 2
-  ldw s0, [sp]
-  add sp, 2
-  ldw ra, [sp]
-  add sp, 2
+  jmp exit_from_an_app
 
 load_and_run_app_skip:
 
@@ -990,25 +1051,25 @@ char_table:
 
 ; null:
   byte 0b00000000
+  byte 0b01100100
+  byte 0b01010100
+  byte 0b01010110
   byte 0b00000000
-  byte 0b00000000
-  byte 0b00000000
-  byte 0b00000000
-  byte 0b00000000
+  byte 0b01111110
   byte 0b00000000
   byte 0b00000000
 
 ; new line:
   byte 0b00000000
-  byte 0b00000000
-  byte 0b00000000
-  byte 0b00000000
-  byte 0b00000000
-  byte 0b00000000
-  byte 0b00000000
+  byte 0b00000010
+  byte 0b00010010
+  byte 0b00100010
+  byte 0b01111100
+  byte 0b00100000
+  byte 0b00010000
   byte 0b00000000
 
-; shift lock:
+; caps lock:
   byte 0b00000000
   byte 0b00010000
   byte 0b00101000
@@ -1630,25 +1691,25 @@ char_table:
 
 ; null:
   byte 0b00000000
+  byte 0b01100100
+  byte 0b01010100
+  byte 0b01010110
   byte 0b00000000
-  byte 0b00000000
-  byte 0b00000000
-  byte 0b00000000
-  byte 0b00000000
+  byte 0b01111110
   byte 0b00000000
   byte 0b00000000
 
 ; new line:
   byte 0b00000000
-  byte 0b00000000
-  byte 0b00000000
-  byte 0b00000000
-  byte 0b00000000
-  byte 0b00000000
-  byte 0b00000000
+  byte 0b00000010
+  byte 0b00010010
+  byte 0b00100010
+  byte 0b01111100
+  byte 0b00100000
+  byte 0b00010000
   byte 0b00000000
 
-; shift lock:
+; caps lock:
   byte 0b00000000
   byte 0b00010000
   byte 0b00101000
@@ -2277,32 +2338,226 @@ char_table:
 
 ; func user_start () {
 user_start:
-  text "sys:files_list"
-  reserve 18
-  text "app:buzzer_test"
-  reserve 17
-  text "app:test_001"
-  reserve 20
-  text "tmp:test_002"
-  reserve 20
-  text "app:test_003"
-  reserve 20
-  text "app:test_005"
-  reserve 20
-  text "tmp:test_007"
-  reserve 20
-  text "app:test_004"
-  reserve 20
-  text "app:test_008"
-  reserve 20
-  text "tmp:test_009"
-  reserve 20
-  text "app:test_011"
-  reserve 20
-  text "app:test_010"
-  reserve 20
-  text "tmp:test_012"
-  reserve 20
-  text "app:test_013"
-  reserve 20
+  jmp user_main
+; }
+
+
+; User Variables & Buffers
+user_title_bar_str:
+  text "Char "
+  text "Editor"
+  byte 0
+
+user_editor_text_buffer:
+  reserve 48
+
+hex_nums:
+  text "0123456789ABCDEF"
+
+scroll_pos:
+  word 0
+
+
+; func user_main () {
+user_main:
+  sub sp, 2
+  stw ra, [sp]
+
+  mov a0, 1
+  jsr ra, filter_files
+
+user_menu_loop:
+  jsr ra, user_editor
+  jsr ra, update_cursor_pos
+  jsr ra, update_caps_lock
+
+  ldi a0, 0b101010
+  jsr ra, clear_screen
+  jsr ra, clear_text_buffer
+
+  ldi a0, 0b100110
+  ldi a1, user_title_bar_str
+  jsr ra, draw_title_bar
+
+  jsr ra, draw_caps_lock
+  ldi a0, 0b100110
+  jsr ra, draw_file_menu
+
+  jsr ra, draw_text_buffer
+  jsr ra, refresh_screen
+
+  ldi t0, BUTTONS
+  ldw t0, [t0]
+  shr t0, 5
+  and t0, 1
+  xor t0, 1
+  brc t0, user_menu_loop
+
+user_menu_exit_wait: 
+  ldi t0, 0xF00E
+  ldw t0, [t0]
+  ldi t1, 0b100000
+  and t0, t1
+  dif t0, 0
+  brc t0, user_menu_exit_wait
+
+  ldw ra, [sp]
+  add sp, 2
+
+  ret ra
+; }
+
+
+; func user_editor () {
+user_editor:
+  sub sp, 2
+  stw ra, [sp]
+
+  ldi t0, 0xF00E
+  ldw t0, [t0]
+  ldi t1, 0b10000
+  and t0, t1
+  equ t0, 0
+  brc t0, user_editor_skip
+
+user_editor_skip_wait: 
+  ldi t0, 0xF00E
+  ldw t0, [t0]
+  ldi t1, 0b10000
+  and t0, t1
+  dif t0, 0
+  brc t0, user_editor_skip_wait
+
+user_editor_loop:
+  jsr ra, update_caps_lock
+
+  ldi a0, 0b101010
+  jsr ra, clear_screen
+  jsr ra, clear_text_buffer
+
+  ldi a0, 0b100110
+  ldi a1, filtered_files_list
+  ldi t0, cursor_pos
+  ldb t0, [t0]
+  shl t0, 5
+  add a1, t0
+  add a1, 4
+  jsr ra, draw_title_bar
+
+  jsr ra, draw_caps_lock
+
+  jsr ra, draw_charbox;
+
+  jsr ra, draw_text_buffer
+  jsr ra, refresh_screen
+
+  ldi t0, BUTTONS
+  ldw t0, [t0]
+  shr t0, 5
+  and t0, 1
+  xor t0, 1
+  brc t0, user_editor_loop
+
+user_editor_exit_wait: 
+  ldi t0, 0xF00E
+  ldw t0, [t0]
+  ldi t1, 0b100000
+  and t0, t1
+  dif t0, 0
+  brc t0, user_editor_exit_wait
+
+user_editor_skip:
+  ldw ra, [sp]
+  add sp, 2
+
+  ret ra
+; }
+
+
+; func draw_line_nums () {
+draw_line_nums:
+  sub sp, 2
+  stw ra, [sp]
+  sub sp, 2
+  stw s0, [sp]
+
+  mov s0, 6
+draw_line_nums_loop:
+  sub s0, 1
+
+  mov a0, s0
+  shl a0, 4
+
+  ldi t1, text_buffer
+  adi t1, 37
+  add t1, a0
+  ldi t0, 0x15 ; "h"
+  stb t0, [t1]
+  ldi t0, 0x3C ; ":"
+  add t1, 1
+  stb t0, [t1]
+
+  adi a0, 33
+  adi a0, text_buffer
+  mov a1, s0
+  shl a1, 3
+  jsr ra, word_to_hex
+
+  brc s0, draw_line_nums_loop
+
+  ldw s0, [sp]
+  add sp, 2
+  ldw ra, [sp]
+  add sp, 2
+  ret ra
+; }
+
+
+; func word_to_hex (*text_buf, #word) {
+word_to_hex:
+  mov t0, a1
+  shr t0, 12
+  adi t0, hex_nums
+  ldb t0, [t0]
+  stb t0, [a0]
+
+  mov t0, a1
+  shr t0, 8
+  and t0, 0b1111
+  adi t0, hex_nums
+  ldb t0, [t0]
+  add a0, 1
+  stb t0, [a0]
+
+  mov t0, a1
+  shr t0, 4
+  and t0, 0b1111
+  adi t0, hex_nums
+  ldb t0, [t0]
+  add a0, 1
+  stb t0, [a0]
+
+  mov t0, a1
+  and t0, 0b1111
+  adi t0, hex_nums
+  ldb t0, [t0]
+  add a0, 1
+  stb t0, [a0]
+
+  ret ra
+; }
+
+
+; func draw_charbox () {
+draw_charbox:
+  sub sp, 2 
+  stw ra, [sp]
+
+  jsr ra, draw_standard_window
+  jsr ra, draw_line_nums
+
+  ldw ra, [sp]
+  add sp, 2
+
+  ret ra
 ; }

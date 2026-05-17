@@ -117,10 +117,10 @@ initial begin
   rst_seq[3]  = 8'b01010011; dc[3]  = 1'b1; delay[3]  = cycles_in_ms * 32'd010; // COLMOD_PARAM
   rst_seq[4]  = 8'b00110110; dc[4]  = 1'b0; delay[4]  = cycles_in_ms * 32'd000; // MADCTL
   rst_seq[5]  = 8'b10100000; dc[5]  = 1'b1; delay[5]  = cycles_in_ms * 32'd000; // MADCTL_PARAM
-  rst_seq[6]  = 8'b00101010; dc[6] = 1'b0; delay[6] = cycles_in_ms * 32'd040; // CASET
-  rst_seq[7]  = 8'b00000000; dc[7] = 1'b1; delay[7] = cycles_in_ms * 32'd000; // CASET_PARAM_1
-  rst_seq[8]  = 8'b00000000; dc[8] = 1'b1; delay[8] = cycles_in_ms * 32'd000; // CASET_PARAM_2
-  rst_seq[9]  = 8'b00000001; dc[9] = 1'b1; delay[9] = cycles_in_ms * 32'd000; // CASET_PARAM_3
+  rst_seq[6]  = 8'b00101010; dc[6]  = 1'b0; delay[6]  = cycles_in_ms * 32'd040; // CASET
+  rst_seq[7]  = 8'b00000000; dc[7]  = 1'b1; delay[7]  = cycles_in_ms * 32'd000; // CASET_PARAM_1
+  rst_seq[8]  = 8'b00000000; dc[8]  = 1'b1; delay[8]  = cycles_in_ms * 32'd000; // CASET_PARAM_2
+  rst_seq[9]  = 8'b00000001; dc[9]  = 1'b1; delay[9]  = cycles_in_ms * 32'd000; // CASET_PARAM_3
   rst_seq[10] = 8'b11111111; dc[10] = 1'b1; delay[10] = cycles_in_ms * 32'd000; // CASET_PARAM_4
   rst_seq[11] = 8'b00101011; dc[11] = 1'b0; delay[11] = cycles_in_ms * 32'd000; // RASET
   rst_seq[12] = 8'b00000000; dc[12] = 1'b1; delay[12] = cycles_in_ms * 32'd000; // RASET_PARAM_1
