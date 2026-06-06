@@ -27,6 +27,7 @@ initial LCD_CS <= 1'b0;
 initial gpu_busy <= 1'b1;
 
 always @(posedge clk) LCD_CLK = ~LCD_CLK;
+// always @(*) LCD_CLK = clk;
 
 wire [15:0] ram_data_rd_1, ram_data_rd_2;
 
@@ -94,8 +95,9 @@ localparam idle = 3'b110;
 localparam send = 3'b111;
 
 // Clock Frequency
+// localparam clk_freq = 32'd54000000; // Fast (54MHz)
 localparam clk_freq = 32'd27000000; // Normal (27MHz)
-// localparam clk_freq = 32'd1000; // Test (1KHz)
+// localparam clk_freq = 32'd1000; // Simulation (1KHz)
 localparam cycles_in_ms = clk_freq / 32'd1000;
 
 // Resolution

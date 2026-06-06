@@ -242,15 +242,15 @@ always @(posedge clk) begin
     else if (~KEYBOARD_COL[9]) keyboard_data_tmp_0 <= 16'h0F;
     else keyboard_data_tmp_0 <= 16'h00;
   end else if (row_enable == 3'b010) begin
-         if (~KEYBOARD_COL[1]) keyboard_data_tmp_1 <= 16'h10;
-    else if (~KEYBOARD_COL[2]) keyboard_data_tmp_1 <= 16'h11;
-    else if (~KEYBOARD_COL[3]) keyboard_data_tmp_1 <= 16'h12;
-    else if (~KEYBOARD_COL[4]) keyboard_data_tmp_1 <= 16'h13;
-    else if (~KEYBOARD_COL[5]) keyboard_data_tmp_1 <= 16'h14;
-    else if (~KEYBOARD_COL[6]) keyboard_data_tmp_1 <= 16'h15;
-    else if (~KEYBOARD_COL[7]) keyboard_data_tmp_1 <= 16'h16;
-    else if (~KEYBOARD_COL[8]) keyboard_data_tmp_1 <= 16'h17;
-    else if (~KEYBOARD_COL[9]) keyboard_data_tmp_1 <= 16'h18;
+         if (~KEYBOARD_COL[0]) keyboard_data_tmp_1 <= 16'h10;
+    else if (~KEYBOARD_COL[1]) keyboard_data_tmp_1 <= 16'h11;
+    else if (~KEYBOARD_COL[2]) keyboard_data_tmp_1 <= 16'h12;
+    else if (~KEYBOARD_COL[3]) keyboard_data_tmp_1 <= 16'h13;
+    else if (~KEYBOARD_COL[4]) keyboard_data_tmp_1 <= 16'h14;
+    else if (~KEYBOARD_COL[5]) keyboard_data_tmp_1 <= 16'h15;
+    else if (~KEYBOARD_COL[6]) keyboard_data_tmp_1 <= 16'h16;
+    else if (~KEYBOARD_COL[7]) keyboard_data_tmp_1 <= 16'h17;
+    else if (~KEYBOARD_COL[8]) keyboard_data_tmp_1 <= 16'h18;
     else keyboard_data_tmp_1 <= 16'h00;
   end else if (row_enable == 3'b100) begin
          if (~KEYBOARD_COL[0]) keyboard_data_tmp_2 <= 16'h02;
