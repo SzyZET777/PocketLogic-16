@@ -42,9 +42,6 @@
   filtered_files_list_size:
     word 0
 
-  current_sd_card_block:
-    word -1
-
   caps_lock_on_str:
     text "ABC"
 
@@ -74,7 +71,7 @@
 
     jsr ra, buzzer_test
 
-    mov a0, 2
+    mov a0, 0
     jsr ra, save_program_to_sd
 
   exit_from_an_app:
@@ -189,42 +186,38 @@
   get_title_str:
     sub sp, 2
     stw ra, [sp]
-    sub sp, 2
-    stw s0, [sp]
-    sub sp, 2
-    stw s1, [sp]
-    sub sp, 2
-    stw s2, [sp]
 
     ; Get #real_file_index from filtered_files_list
     shl a0, 1
     adi a0, filtered_files_list
     ldw a0, [a0]
 
-    mov s0, a0
-    shl s0, 5
-    mov s1, a1
+    ; Get title from SD_CARD
+    ldi t0, SD_CARD_BLOCK_ADR
+    mov t1, a0
+    shr t1, 4
+    stw t1, [t0]
+
+    ldi t0, 0xF010
+    mov t1, 1
+    stw t1, [t0]
+
+    jsr ra, wait_for_sd
+
+    shl a0, 5
+    adi a0, SD_CARD_BLOCK
     
-    ldi s2, 32
+    ldi t1, 32
   get_title_str_loop:
-    sub s2, 1
-    mov a0, 0
-    mov a1, s0
-    add a1, s2
-    jsr ra, read_sequence_byte_from_sd_card
-    mov t3, s1
-    add t3, s2
-    stb rv, [t3]
-    brc s2, get_title_str_loop
+    sub t1, 1
+    mov t2, a0
+    add t2, t1
+    ldb t2, [t2]
+    mov t3, a1
+    add t3, t1
+    stb t2, [t3]
+    brc t1, get_title_str_loop
 
-    jsr ra, finish_sequence_read
-
-    ldw s2, [sp]
-    add sp, 2
-    ldw s1, [sp]
-    add sp, 2
-    ldw s0, [sp]
-    add sp, 2
     ldw ra, [sp]
     add sp, 2
     ret ra
@@ -718,6 +711,11 @@
     dif t0, 6
     brc t0, app_menu_text_loop_y
 
+    ldi a0, text_buffer
+    ldi a1, filtered_files_list_size
+    ldw a1, [a1]
+    ; jsr ra, word_to_hex
+
     ldw s0, [sp]
     add sp, 2
     ldw ra, [sp]
@@ -904,25 +902,45 @@
   save_program_to_sd:
     sub sp, 2
     stw ra, [sp]
-    sub sp, 2
-    stw s0, [sp]
 
-    mov s0, 0
-  save_program_to_sd_loop:
-    mov a1, s0
-    ldi a2, user_start
-    add a2, s0
-    ldw a2, [a2]
-    jsr ra, write_sequence_word_to_sd_card
-    add s0, 2
-    mov t0, s0
-    dfi t0, 16384
-    brc t0, save_program_to_sd_loop
+    shl a0, 5
 
-    jsr ra, finish_sequence_write
+    jsr ra, wait_for_sd
 
-    ldw s0, [sp]
-    add sp, 2
+    mov t2, 0
+  save_program_to_sd_block_loop:
+    ldi t0, SD_CARD_BLOCK_ADR
+    mov t1, a0
+    add t1, t2
+    stw t1, [t0]
+
+    mov t3, 0
+  save_program_to_sd_adr_loop:
+    mov t0, t2
+    shl t0, 9
+    add t0, t3
+    adi t0, user_start
+    ldw t1, [t0]
+
+    ldi t0, SD_CARD_BLOCK
+    add t0, t3
+    stw t1, [t0]
+
+    add t3, 2
+    mov t0, t3
+    dfi t0, 512
+    brc t0, save_program_to_sd_adr_loop
+
+    ldi t0, 0xF014
+    mov t1, 1
+    stw t1, [t0]
+    jsr ra, wait_for_sd
+
+    add t2, 1
+    mov t0, t2
+    dfi t0, 32
+    brc t0, save_program_to_sd_block_loop
+
     ldw ra, [sp]
     add sp, 2
     
@@ -933,28 +951,48 @@
   load_program_from_sd:
     sub sp, 2
     stw ra, [sp]
-    sub sp, 2
-    stw s0, [sp]
 
-    mov s0, 0
-  load_program_from_sd_loop:
-    mov a1, s0
-    jsr ra, read_sequence_word_from_sd_card
-    ldi t0, user_start
-    add t0, s0
-    stw rv, [t0]
-    add s0, 2
-    mov t0, s0
-    dfi t0, 16384
-    brc t0, load_program_from_sd_loop
+    shl a0, 5
 
-    jsr ra, finish_sequence_read
+    jsr ra, wait_for_sd
 
-    ldw s0, [sp]
-    add sp, 2
+    mov t2, 0
+  load_program_from_sd_block_loop:
+    ldi t0, SD_CARD_BLOCK_ADR
+    mov t1, a0
+    add t1, t2
+    stw t1, [t0]
+
+    ldi t0, 0xF010
+    mov t1, 1
+    stw t1, [t0]
+    jsr ra, wait_for_sd
+
+    mov t3, 0
+  load_program_from_sd_adr_loop:
+    ldi t0, SD_CARD_BLOCK
+    add t0, t3
+    ldw t1, [t0]
+
+    mov t0, t2
+    shl t0, 9
+    add t0, t3
+    adi t0, user_start
+    stw t1, [t0]
+
+    add t3, 2
+    mov t0, t3
+    dfi t0, 512
+    brc t0, load_program_from_sd_adr_loop
+
+    add t2, 1
+    mov t0, t2
+    dfi t0, 32
+    brc t0, load_program_from_sd_block_loop
+
     ldw ra, [sp]
     add sp, 2
-
+    
     ret ra
 ; }
 
@@ -1094,216 +1132,6 @@
     ldw ra, [sp]
     add sp, 2
 
-    ret ra
-; }
-
-; func read_sequence_byte_from_sd_card (#file_index, #pos) -> (#data) {
-  read_sequence_byte_from_sd_card:
-    sub sp, 2
-    stw ra, [sp]
-  
-    ldi t0, SD_CARD_BLOCK_ADR
-    ldi t3, current_sd_card_block
-  
-    mov t1, a0
-    shl t1, 5
-    mov t2, a1
-    shr t2, 9
-    add t1, t2
-
-    ldw t2, [t3]
-    equ t2, t1
-    brc t2, skip_sd_card_block_reload_byte
-    
-    stw t1, [t0]
-    stw t1, [t3]
-
-    ldi t0, 0xF010
-    mov t1, 1
-    stw t1, [t0]
-    
-    jsr ra, wait_for_sd
-
-  skip_sd_card_block_reload_byte:
-    ldi t0, SD_CARD_BLOCK
-    mov t1, a1
-    ldi t2, 0x1FF
-    and t1, t2
-    add t0, t1
-
-    ldb rv, [t0]
-
-    ldw ra, [sp]
-    add sp, 2
-    ret ra
-; }
-
-; func read_sequence_word_from_sd_card (#file_index, #pos) -> (#data) {
-  read_sequence_word_from_sd_card:
-    sub sp, 2
-    stw ra, [sp]
-  
-    ldi t0, SD_CARD_BLOCK_ADR
-    ldi t3, current_sd_card_block
-  
-    mov t1, a0
-    shl t1, 5
-    mov t2, a1
-    shr t2, 9
-    add t1, t2
-
-    ldw t2, [t3]
-    equ t2, t1
-    brc t2, skip_sd_card_block_reload_word
-    
-    stw t1, [t0]
-    stw t1, [t3]
-
-    ldi t0, 0xF010
-    mov t1, 1
-    stw t1, [t0]
-    
-    jsr ra, wait_for_sd
-
-  skip_sd_card_block_reload_word:
-    ldi t0, SD_CARD_BLOCK
-    mov t1, a1
-    ldi t2, 0x1FF
-    and t1, t2
-    add t0, t1
-
-    ldw rv, [t0]
-
-    ldw ra, [sp]
-    add sp, 2
-    ret ra
-; }
-
-; func finish_sequence_read () {
-  finish_sequence_read:
-    sub sp, 2
-    stw ra, [sp]
-
-    ldi t0, current_sd_card_block
-    ldi t1, -1
-    stw t1, [t0]
-
-    ldw ra, [sp]
-    add sp, 2
-    ret ra
-; }
-
-; func write_sequence_byte_to_sd_card (#file_index, #pos, #data) {
-  write_sequence_byte_to_sd_card:
-    sub sp, 2
-    stw ra, [sp]
-    sub sp, 2
-    stw s0, [sp]
-  
-    ldi t3, current_sd_card_block
-  
-    mov t1, a0
-    shl t1, 5
-    mov t2, a1
-    shr t2, 9
-    add t1, t2
-
-    ldw t2, [t3]
-    equ t2, t1
-    brc t2, skip_sd_card_block_reload_byte_wr
-
-    ldi t0, 0xF014
-    mov t2, 1
-    stw t2, [t0]
-
-    mov s0, t1
-
-    jsr ra, wait_for_sd
-    
-    ldi t0, SD_CARD_BLOCK_ADR
-    stw s0, [t0]
-    stw s0, [t3]
-
-  skip_sd_card_block_reload_byte_wr:
-    ldi t0, SD_CARD_BLOCK
-    mov t1, a1
-    ldi t2, 0x1FF
-    and t1, t2
-    add t0, t1
-
-    stb a2, [t0]
-
-    ldw s0, [sp]
-    add sp, 2
-    ldw ra, [sp]
-    add sp, 2
-    ret ra
-; }
-
-; func write_sequence_word_to_sd_card (#file_index, #pos, #data) {
-  write_sequence_word_to_sd_card:
-    sub sp, 2
-    stw ra, [sp]
-    sub sp, 2
-    stw s0, [sp]
-  
-    ldi t3, current_sd_card_block
-  
-    mov t1, a0
-    shl t1, 5
-    mov t2, a1
-    shr t2, 9
-    add t1, t2
-
-    ldw t2, [t3]
-    equ t2, t1
-    brc t2, skip_sd_card_block_reload_word_wr
-
-    ldi t0, 0xF014
-    mov t2, 1
-    stw t2, [t0]
-
-    mov s0, t1
-
-    jsr ra, wait_for_sd
-    
-    ldi t0, SD_CARD_BLOCK_ADR
-    stw s0, [t0]
-    stw s0, [t3]
-
-  skip_sd_card_block_reload_word_wr:
-    ldi t0, SD_CARD_BLOCK
-    mov t1, a1
-    ldi t2, 0x1FF
-    and t1, t2
-    add t0, t1
-
-    stw a2, [t0]
-
-    ldw s0, [sp]
-    add sp, 2
-    ldw ra, [sp]
-    add sp, 2
-    ret ra
-; }
-
-; func finish_sequence_write () {
-  finish_sequence_write:
-    sub sp, 2
-    stw ra, [sp]
-
-    ldi t0, 0xF014
-    mov t1, 1
-    stw t1, [t0]
-    
-    jsr ra, wait_for_sd
-
-    ldi t0, current_sd_card_block
-    ldi t1, -1
-    stw t1, [t0]
-
-    ldw ra, [sp]
-    add sp, 2
     ret ra
 ; }
 
@@ -2596,478 +2424,28 @@
 ; Userspace Code:
   sector 0x4000
 
-
-; func user_start () {
-  user_start:
-    jmp user_main
-; }
-
-
-; data user_variables_and_buffers {
-  user_title_bar_str:
-    text "Character "
-    text "Editor"
-    byte 0
-
-  hex_nums:
-    text "0123456789ABCDEF"
-
-  charbox_cursor_pos_x:
-    word 0
-
-  charbox_cursor_pos_y:
-    word 0
-
-  charbox_scroll_pos:
-    word 0
-; }
-
-
-; func user_main () {
-  user_main:
-    sub sp, 2
-    stw ra, [sp]
-
-    mov a0, 1
-    jsr ra, filter_files
-
-  user_menu_loop:
-    jsr ra, user_editor
-    jsr ra, update_cursor_pos
-    jsr ra, update_caps_lock
-
-    ldi a0, 0b101010
-    jsr ra, clear_screen
-    jsr ra, clear_text_buffer
-
-    ldi a0, 0b100110
-    ldi a1, user_title_bar_str
-    jsr ra, draw_title_bar
-
-    jsr ra, draw_caps_lock
-    ldi a0, 0b100110
-    jsr ra, draw_file_menu
-
-    jsr ra, draw_text_buffer
-    jsr ra, refresh_screen
-
-    ldi a0, BUTTON_ESC
-    ldi a1, user_menu_exit
-    ldi a2, user_menu_loop
-    jsr ra, jump_if_button_pressed
-
-  user_menu_exit:
-    ldw ra, [sp]
-    add sp, 2
-
-    ret ra
-; }
-
-; func reset_charbox_pos () {
-  reset_charbox_pos:
-    mov t0, 0
-    ldi t1, charbox_cursor_pos_x
-    stw t0, [t1]
-    ldi t1, charbox_cursor_pos_y
-    stw t0, [t1]
-    ldi t1, charbox_scroll_pos
-    stw t0, [t1]
-    ret ra
-; }
-
-; func update_user_editor_cursor () {
-  update_user_editor_cursor:
-    sub sp, 2
-    stw ra, [sp]
-
-    ldi a0, BUTTON_U
-    ldi a1, move_user_editor_cursor_u
-    ldi a2, move_user_editor_cursor_u_skip
-    jsr ra, jump_if_button_pressed
-
-  move_user_editor_cursor_u:
-    ldi a0, charbox_cursor_pos_y
-    ldi a1, charbox_scroll_pos
-    jsr ra, cursor_up
-
-  move_user_editor_cursor_u_skip:
-    ldi a0, BUTTON_D
-    ldi a1, move_user_editor_cursor_d
-    ldi a2, move_user_editor_cursor_d_skip
-    jsr ra, jump_if_button_pressed
-
-  move_user_editor_cursor_d:
-    ldi a0, charbox_cursor_pos_y
-    ldi a1, charbox_scroll_pos
-    ldi a2, 2048
-    sub sp, 2
-    stw a2, [sp]
-    mov a2, sp
-    jsr ra, cursor_down
-    add sp, 2
-
-  move_user_editor_cursor_d_skip:
-    ldi a0, BUTTON_L
-    ldi a1, move_user_editor_cursor_l
-    ldi a2, move_user_editor_cursor_l_skip
-    jsr ra, jump_if_button_pressed
-
-  move_user_editor_cursor_l:
-    ldi t1, charbox_cursor_pos_x
-    ldw t0, [t1]
-    sub t0, 1
-    stw t0, [t1]
-
-  move_user_editor_cursor_l_skip:
-    ldi a0, BUTTON_R
-    ldi a1, move_user_editor_cursor_r
-    ldi a2, move_user_editor_cursor_r_skip
-    jsr ra, jump_if_button_pressed
-
-  move_user_editor_cursor_r:
-    ldi t1, charbox_cursor_pos_x
-    ldw t0, [t1]
-    add t0, 1
-    stw t0, [t1]
-
-  move_user_editor_cursor_r_skip:
-    ldi a0, charbox_cursor_pos_y
-    mov a1, 0
-    mov a2, 5
-    jsr ra, clamp_signed_var
-
-    ldi a0, charbox_cursor_pos_x
-    mov a1, 0
-    mov a2, 7
-    jsr ra, clamp_signed_var
-
-    ldw ra, [sp]
-    add sp, 2
-
-    ret ra
-; }
-
-; func edit_char () {
-  edit_char:
-    sub sp, 2
-    stw ra, [sp]
-
-    jsr ra, get_key
-    mov t0, rv
-    equ t0, 0
-    brc t0, edit_char_skip
-    mov t0, rv
-    equ t0, 1
-    brc t0, edit_char_skip
-    mov t0, rv
-    equ t0, 2
-    brc t0, edit_char_skip
-    mov t0, rv
-    eqi t0, 0x20
-    brc t0, edit_char_skip
-    mov t0, rv
-    eqi t0, 0x21
-    brc t0, edit_char_skip
-    mov t0, rv
-    eqi t0, 0x22
-    brc t0, edit_char_skip
-    mov t0, rv
-    eqi t0, 0x23
-    brc t0, edit_char_skip
-
-    mov t0, rv
-    dif t0, 3
-    brc t0, backspace_not_pressed
-    mov rv, 0
-
-  backspace_not_pressed:
-
-    ldi t0, SD_CARD_BLOCK_ADR
-    
-    ldi t1, cursor_pos
-    ldw t1, [t1]
-    ldi t2, app_menu_pos
-    ldw t2, [t2]
-    add t1, t2
-    shl t1, 5
-
-    ldi t3, charbox_scroll_pos
-    ldw t3, [t3]
-    ldi t2, charbox_cursor_pos_y
-    ldw t2, [t2]
-    add t3, t2
-    shr t3, 6
-    add t1, t3
-
-    stw t1, [t0]
-
-    ldi t0, charbox_cursor_pos_y
-    ldw t0, [t0]
-    ldi t3, charbox_scroll_pos
-    ldw t3, [t3]
-    ldi t1, 0b111111
-    add t0, t3 
-    and t0, t1
-    shl t0, 3
-    adi t0, SD_CARD_BLOCK
-    ldi t2, charbox_cursor_pos_x
-    ldw t2, [t2]
-    add t0, t2
-
-    stb rv, [t0]
-
-    ldi t0, 0xF014
-    mov t1, 1
-    stw t1, [t0]
-    jsr ra, wait_for_sd
-
-  edit_char_skip:
-
-    ldw ra, [sp]
-    add sp, 2
-
-    ret ra
-; }
-
-; func user_editor () {
-  user_editor:
-    sub sp, 2
-    stw ra, [sp]
-
-    ldi a0, BUTTON_ENT
-    ldi a1, user_editor_start
-    ldi a2, user_editor_skip_or_exit
-    jsr ra, jump_if_button_pressed
-
-  user_editor_start:
-
-    jsr ra, reset_charbox_pos
-
-  user_editor_loop:
-    jsr ra, update_user_editor_cursor
-    jsr ra, edit_char
-    jsr ra, update_caps_lock
-
-    ldi a0, 0b101010
-    jsr ra, clear_screen
-
-    jsr ra, clear_text_buffer
-
-    ldi a0, cursor_pos
-    ldw a0, [a0]
-    ldi t0, app_menu_pos
-    ldw t0, [t0]
-    add a0, t0
-    ldi a1, tmp_str
-    jsr ra, get_title_str
-
-    ldi a0, 0b100110
-    ldi a1, tmp_str
-    jsr ra, draw_title_bar
-
-    jsr ra, draw_caps_lock
-    jsr ra, draw_charbox;
-    jsr ra, draw_text_buffer
-    jsr ra, refresh_screen
-
-    ldi a0, BUTTON_ESC
-    ldi a1, user_editor_skip_or_exit
-    ldi a2, user_editor_loop
-    jsr ra, jump_if_button_pressed
-
-  user_editor_skip_or_exit:
-    ldw ra, [sp]
-    add sp, 2
-
-    ret ra
-; }
-
-; func draw_line_nums () {
-  draw_line_nums:
-    sub sp, 2
-    stw ra, [sp]
-    sub sp, 2
-    stw s0, [sp]
-
-    mov s0, 6
-  draw_line_nums_loop:
-    sub s0, 1
-
-    mov a0, s0
-    shl a0, 4
-
-    ldi t1, text_buffer
-    adi t1, 37
-    add t1, a0
-    ldi t0, 0x15 ; "h"
-    stb t0, [t1]
-    ldi t0, 0x3C ; ":"
-    add t1, 1
-    stb t0, [t1]
-
-    adi a0, 33
-    adi a0, text_buffer
-    mov a1, s0
-    ldi t0, charbox_scroll_pos
-    ldw t0, [t0]
-    add a1, t0
-    shl a1, 3
-    jsr ra, word_to_hex
-
-    brc s0, draw_line_nums_loop
-
-    ldw s0, [sp]
-    add sp, 2
-    ldw ra, [sp]
-    add sp, 2
-    ret ra
-; }
-
-; func word_to_hex (*text_buf, #word) {
-  word_to_hex:
-    mov t0, a1
-    shr t0, 12
-    adi t0, hex_nums
-    ldb t0, [t0]
-    stb t0, [a0]
-
-    mov t0, a1
-    shr t0, 8
-    and t0, 0b1111
-    adi t0, hex_nums
-    ldb t0, [t0]
-    add a0, 1
-    stb t0, [a0]
-
-    mov t0, a1
-    shr t0, 4
-    and t0, 0b1111
-    adi t0, hex_nums
-    ldb t0, [t0]
-    add a0, 1
-    stb t0, [a0]
-
-    mov t0, a1
-    and t0, 0b1111
-    adi t0, hex_nums
-    ldb t0, [t0]
-    add a0, 1
-    stb t0, [a0]
-
-    ret ra
-; }
-
-; func draw_charbox_cursor () {
-  draw_charbox_cursor:
-    sub sp, 2
-    stw ra, [sp]
-
-    ldi t0, charbox_cursor_pos_y
-    ldw t0, [t0]
-    shl t0, 4
-
-    ldi t1, charbox_cursor_pos_x
-    ldw t1, [t1]
-
-    add t0, t1
-    adi t0, 39
-    adi t0, text_color_buffer
-
-    ldi t1, 0b111111
-    stb t1, [t0]
-
-    ldi a0, charbox_cursor_pos_y
-    ldw a0, [a0]
-    shl a0, 10
-  
-    ldi t1, charbox_cursor_pos_x
-    ldw t1, [t1]
-    shl t1, 3
-
-    add a0, t1
-    adi a0, 2104
-
-    mov a1, 8
-    mov a2, 8
-    ldi a3, 0b100110
-    jsr ra, draw_rect
-
-    ldw ra, [sp]
-    add sp, 2
-
-    ret ra
-}
-
-; func draw_charbox () {
-  draw_charbox:
-    sub sp, 2 
-    stw ra, [sp]
-    sub sp, 2 
-    stw s0, [sp]
-
-    jsr ra, draw_standard_window
-    jsr ra, draw_line_nums
-
-    mov s0, 6
-  charbox_lines_y_loop:
-    sub s0, 1
-
-    ldi t0, SD_CARD_BLOCK_ADR
-    
-    ldi t1, cursor_pos
-    ldw t1, [t1]
-    ldi t2, app_menu_pos
-    ldw t2, [t2]
-    add t1, t2
-    shl t1, 5
-
-    ldi t3, charbox_scroll_pos
-    ldw t3, [t3]
-    add t3, s0
-    shr t3, 6
-    add t1, t3
-
-    stw t1, [t0]
-
-    ldi t0, 0xF010
-    mov t1, 1
-    stw t1, [t0]
-    
-    jsr ra, wait_for_sd
-
-    mov t2, 8
-  charbox_lines_x_loop:
-    sub t2, 1
-
-    mov t0, s0
-    ldi t3, charbox_scroll_pos
-    ldw t3, [t3]
-    ldi t1, 0b111111
-    add t0, t3 
-    and t0, t1
-    shl t0, 3
-    adi t0, SD_CARD_BLOCK
-    add t0, t2
-
-    ldb t1, [t0]
-
-    mov t0, s0
-    shl t0, 4
-    adi t0, text_buffer
-    adi t0, 39
-    add t0, t2
-
-    stb t1, [t0]
-
-    brc t2, charbox_lines_x_loop
-    brc s0, charbox_lines_y_loop
-
-    jsr ra, draw_charbox_cursor
-
-    ldw s0, [sp]
-    add sp, 2
-    ldw ra, [sp]
-    add sp, 2
-
-    ret ra
-; }
+user_start:
+text "sys:files_list"
+reserve 18
+text "app:buzzer_test"
+reserve 17
+text "app:char_editor"
+reserve 17
+text "app:test_001"
+reserve 20
+text "app:test_002"
+reserve 20
+text "app:test_003"
+reserve 20
+text "app:test_004"
+reserve 20
+text "app:test_005"
+reserve 20
+text "tmp:test_006"
+reserve 20
+text "app:test_007"
+reserve 20
+text "tmp:test_008"
+reserve 20
+text "app:test_009"
+reserve 20
