@@ -65,7 +65,7 @@ Instructions:
      (0x0CXY) - lst rX, rY  :  rX = (signed) (rX < rY)
      (0x0DXY) - grt rX, rY  :  rX = (signed) (rX > rY)
      (0x0EXY) - lte rX, rY  :  rX = (signed) (rX <= rY)
-     (0x0FXY) - gte rX, rY  :  rX = (signed) (rX ?= rY)
+     (0x0FXY) - gte rX, rY  :  rX = (signed) (rX >= rY)
   
   Group 1 - Register and 4-bit immediate ALU operations:
    Arithmetic & Logic:
@@ -83,11 +83,11 @@ Instructions:
   
   Group 2 - Load / Store operations:
    Load:
-    (0x20XY) - ldb rX, [rY]  :  rX = memory[rY]
-    (0x21XY) - ldw rX, [rY]  :  rX = memory[rY]
+    (0x20XY) - ldb rX, [rY]  :  rX = memory_byte[rY]
+    (0x21XY) - ldw rX, [rY]  :  rX = memory_word[rY]
    Store:
-    (0x22XY) - stb rX, [rY]  :  memory[rY] = rX
-    (0x23XY) - stw rX, [rY]  :  memory[rY] = rX
+    (0x22XY) - stb rX, [rY]  :  memory_byte[rY] = rX
+    (0x23XY) - stw rX, [rY]  :  memory_word[rY] = rX
   
   Group 3 - Jumps and 16-bit immediate operation:
    16-bit immediate operations:
@@ -96,9 +96,9 @@ Instructions:
     (0x32X0'0xIIII) - eqi rX, IIII  :  rX = (rX == IIII)
     (0x33X0'0xIIII) - dfi rX, IIII  :  rX = (rX != IIII)
   Jumps & Branches:
-    (0x3000'0xIIII) - jmp IIII      :  pc = IIII
-    (0x3100'0xIIII) - brc rX, IIII  :  if (rX != 0) pc = IIII
-    (0x32X0'0xIIII) - jsr rX, IIII  :  rX = pc ; pc = IIII
-    (0x33X0'0xIIII) - ret rX,       :  pc = rX
+    (0x3400'0xIIII) - jmp IIII      :  pc = IIII
+    (0x3500'0xIIII) - brc rX, IIII  :  if (rX != 0) pc = IIII
+    (0x36X0'0xIIII) - jsr rX, IIII  :  rX = pc ; pc = IIII
+    (0x37X0)        - ret rX        :  pc = rX
 ```
 
