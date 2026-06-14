@@ -8,6 +8,9 @@ Specs:
   48KB of Work RAM
   128x80 double-buffered graphics with 64 colors
 ```
+
+The PCB was designed in KiCad and manufactured by JLCPCB
+
 <img width="380" height="380" alt="IMG_2361" src="https://github.com/user-attachments/assets/b1f90562-27db-488e-a1a9-48eab87d8410" />
 
 <img width="380" height="380" alt="IMG_2363" src="https://github.com/user-attachments/assets/5dc0d890-d722-4638-8319-90a7bdfed836" />
