@@ -1,7 +1,6 @@
 # PocketLogic-16
 Simple, 16-bit computer made in Verilog with a custom CPU
 
-
 ```
 Specs:
   27MHz clock (the default on Tang Nano, but it could be higher)
@@ -9,7 +8,11 @@ Specs:
   48KB of Work RAM
   128x80 double-buffered graphics with 64 colors
 ```
+<img width="380" height="380" alt="IMG_2361" src="https://github.com/user-attachments/assets/b1f90562-27db-488e-a1a9-48eab87d8410" />
 
+<img width="380" height="380" alt="IMG_2363" src="https://github.com/user-attachments/assets/5dc0d890-d722-4638-8319-90a7bdfed836" />
+
+<img width="428" height="336" alt="IMG_2333" src="https://github.com/user-attachments/assets/d491a714-5e76-4f1a-acf8-eb8dd97c4f9f" />
 
 Memory Map:
 ```
