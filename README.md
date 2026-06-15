@@ -103,7 +103,7 @@ Instructions:
     (0x33X0'0xIIII) - dfi rX, IIII  :  rX = (rX != IIII)
   Jumps & Branches:
     (0x3400'0xIIII) - jmp IIII      :  pc = IIII
-    (0x3500'0xIIII) - brc rX, IIII  :  if (rX != 0) pc = IIII
+    (0x35X0'0xIIII) - brc rX, IIII  :  if (rX != 0) pc = IIII
     (0x36X0'0xIIII) - jsr rX, IIII  :  rX = pc ; pc = IIII
     (0x37X0)        - ret rX        :  pc = rX
 ```
